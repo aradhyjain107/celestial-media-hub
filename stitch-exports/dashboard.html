@@ -1,0 +1,215 @@
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard - Celestial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050505;
+    --border: #2a2a2a;
+    --text-main: #ffffff;
+    --text-muted: #888888;
+    --text-dark: #444444;
+    --accent: #FF5A00;
+    --accent-hover: #FF7B33;
+    
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    
+    --sidebar-width: 240px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  body { background-color: var(--bg); color: var(--text-main); font-family: var(--font-sans); height: 100vh; overflow: hidden; display: flex; font-size: 14px; line-height: 1.2; }
+  
+  .grid-line-bottom { border-bottom: 1px solid var(--border); }
+  .grid-line-right { border-right: 1px solid var(--border); }
+  .grid-line-top { border-top: 1px solid var(--border); }
+  .grid-line-left { border-left: 1px solid var(--border); }
+  
+  .tiny-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 500; }
+  .mono-data { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+  
+  #app-container { display: flex; width: 100%; height: 100%; border: 1px solid var(--border); margin: 16px; height: calc(100vh - 32px); width: calc(100vw - 32px); }
+  aside.sidebar { width: var(--sidebar-width); flex-shrink: 0; display: flex; flex-direction: column; background: var(--bg); }
+  .sidebar-header { height: 48px; display: flex; align-items: center; padding: 0 16px; }
+  .sidebar-header h1 { font-size: 16px; font-weight: 800; letter-spacing: -0.02em; text-transform: uppercase; }
+  .nav-list { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; }
+  .nav-item { padding: 16px; display: flex; flex-direction: column; gap: 4px; cursor: pointer; transition: background 0.2s, padding-left 0.2s; position: relative; }
+  .nav-item:hover { background: #111; }
+  .nav-item.active { background: #111; }
+  .nav-item.active::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--accent); }
+  .nav-index { font-family: var(--font-mono); font-size: 10px; color: var(--text-dark); }
+  .nav-item.active .nav-index { color: var(--accent); }
+  .nav-name { font-size: 14px; font-weight: 600; }
+  .sidebar-footer { padding: 16px; display: flex; justify-content: space-between; align-items: center; }
+  .status-dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; display: inline-block; box-shadow: 0 0 8px var(--accent); }
+  
+  main.content-area { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .top-utility-bar { height: 48px; display: flex; justify-content: space-between; align-items: center; padding: 0 16px; flex-shrink: 0; }
+  .top-utility-bar > div { display: flex; gap: 32px; }
+  .workspace { display: flex; flex-grow: 1; overflow: hidden; }
+  .dropzone-container { flex-grow: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+  .tool-header { padding: 24px; padding-bottom: 48px; }
+  .tool-title { font-size: 6vw; font-weight: 900; line-height: 0.85; letter-spacing: -0.04em; color: var(--text-main); text-transform: capitalize; margin-left: -4px; }
+  .drop-target-area { flex-grow: 1; display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; transition: background 0.3s; }
+  .drop-target-area:hover { background: rgba(255, 90, 0, 0.03); }
+  .drop-target-area:hover .target-crosshair::before, .drop-target-area:hover .target-crosshair::after { background: var(--accent); }
+  .target-crosshair { width: 120px; height: 120px; position: relative; display: flex; align-items: center; justify-content: center; }
+  .target-crosshair::before { content: ''; position: absolute; width: 100%; height: 1px; background: var(--border); transition: background 0.3s; }
+  .target-crosshair::after { content: ''; position: absolute; height: 100%; width: 1px; background: var(--border); transition: background 0.3s; }
+  .drop-instruction { position: absolute; bottom: 24px; left: 24px; max-width: 300px; }
+  .drop-instruction h3 { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 8px; }
+  .drop-instruction p { color: var(--text-muted); line-height: 1.4; }
+  
+  .options-panel { width: 340px; flex-shrink: 0; display: flex; flex-direction: column; background: #080808; }
+  .options-header { height: 48px; display: flex; align-items: center; padding: 0 16px; }
+  .options-scroll { flex-grow: 1; overflow-y: auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 32px; }
+  .form-group { display: flex; flex-direction: column; gap: 12px; }
+  .form-header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  .custom-select, .custom-input { width: 100%; background: transparent; border: none; color: var(--text-main); font-family: var(--font-mono); font-size: 13px; padding: 8px 0; outline: none; appearance: none; cursor: pointer; }
+  .custom-select { border-bottom: 1px solid #333; background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23888888' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right center; padding-right: 20px; }
+  .custom-select:hover { border-bottom-color: var(--text-main); }
+  .checkbox-group { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+  .checkbox { width: 16px; height: 16px; border: 1px solid var(--text-muted); display: flex; align-items: center; justify-content: center; }
+  .checkbox.checked { border-color: var(--accent); background: var(--accent); }
+  .checkbox.checked::after { content: ''; width: 4px; height: 8px; border: solid var(--bg); border-width: 0 2px 2px 0; transform: rotate(45deg); margin-top: -2px; }
+  .checkbox-label { font-size: 13px; font-weight: 500; }
+  
+  .progress-section { height: 80px; display: flex; flex-shrink: 0; }
+  .action-btn { width: 240px; background: var(--accent); color: var(--bg); border: none; font-family: var(--font-sans); font-weight: 800; font-size: 16px; text-transform: uppercase; letter-spacing: 0.02em; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+  .action-btn:hover { background: var(--accent-hover); }
+  .action-btn:active { transform: scale(0.98); }
+  .progress-track-area { flex-grow: 1; display: flex; align-items: center; padding: 0 24px; position: relative; background: #000; }
+  .progress-meta { position: absolute; top: 16px; left: 24px; right: 24px; display: flex; justify-content: space-between; }
+  .track { width: 100%; height: 2px; background: var(--border); margin-top: 12px; position: relative; }
+  .fill { position: absolute; left: 0; top: 0; height: 100%; width: 0%; background: var(--accent); }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+</style>
+</head>
+<body>
+<div id="app-container">
+  <aside class="sidebar grid-line-right">
+    <div class="sidebar-header grid-line-bottom">
+      <h1>SYS.CORE//</h1>
+    </div>
+    <div class="nav-list">
+
+      <div class="nav-item active grid-line-bottom">
+        <span class="nav-index">01</span>
+        <span class="nav-name">Dashboard</span>
+      </div>
+
+      <div class="nav-item  grid-line-bottom">
+        <span class="nav-index">02</span>
+        <span class="nav-name">Video Muter</span>
+      </div>
+
+      <div class="nav-item  grid-line-bottom">
+        <span class="nav-index">03</span>
+        <span class="nav-name">HEVC Compressor</span>
+      </div>
+
+      <div class="nav-item  grid-line-bottom">
+        <span class="nav-index">04</span>
+        <span class="nav-name">Universal Converter</span>
+      </div>
+
+      <div class="nav-item  grid-line-bottom">
+        <span class="nav-index">05</span>
+        <span class="nav-name">YouTube Downloader</span>
+      </div>
+
+      <div class="nav-item  grid-line-bottom">
+        <span class="nav-index">06</span>
+        <span class="nav-name">Audio Trimmer</span>
+      </div>
+
+      <div class="nav-item  grid-line-bottom">
+        <span class="nav-index">07</span>
+        <span class="nav-name">Spotify Converter</span>
+      </div>
+
+      <div class="nav-item  grid-line-bottom">
+        <span class="nav-index">08</span>
+        <span class="nav-name">Media Inspector</span>
+      </div>
+    </div>
+    <div class="sidebar-footer grid-line-top">
+      <span class="tiny-label">SYS.STATUS</span>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="mono-data">ONLINE</span>
+        <span class="status-dot"></span>
+      </div>
+    </div>
+  </aside>
+
+  <main class="content-area">
+    <div class="top-utility-bar grid-line-bottom">
+      <div class="left-stats">
+        <span class="tiny-label">CELESTIAL //</span>
+      </div>
+      <div class="right-actions">
+        <span class="tiny-label">V. 2.0.0</span>
+      </div>
+    </div>
+
+    <div class="workspace">
+      <div class="dropzone-container">
+        <div class="tool-header">
+          <div class="tiny-label" style="margin-bottom: 16px;">TARGET // 01</div>
+          <h2 class="tool-title">System<br>Overview.</h2>
+        </div>
+        
+        <div class="drop-target-area">
+          <div class="target-crosshair"></div>
+          
+          <div class="drop-instruction">
+            <h3>Drag Payload</h3>
+            <p>Drop compatible media formats here to initialize processing queue. Supports .MOV, .MP4, .R3D, .BRAW.</p>
+          </div>
+        </div>
+      </div>
+
+      <aside class="options-panel grid-line-left">
+        <div class="options-header grid-line-bottom">
+          <span class="tiny-label">PROCESSING PARAMETERS</span>
+        </div>
+        
+        <div class="options-scroll">
+          <div class="form-group">
+            <div class="form-header">
+              <span class="tiny-label">OUTPUT FORMAT</span>
+            </div>
+            <select class="custom-select">
+              <option>Standard Format</option>
+              <option>Advanced Settings</option>
+            </select>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="progress-section grid-line-top">
+      <button class="action-btn grid-line-right">
+        Initialize
+      </button>
+      
+      <div class="progress-track-area">
+        <div class="progress-meta">
+          <span class="tiny-label">AWAITING PAYLOAD</span>
+          <span class="mono-data">QUEUE: 0 FILES</span>
+        </div>
+        <div class="track">
+          <div class="fill"></div> 
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</body></html>
