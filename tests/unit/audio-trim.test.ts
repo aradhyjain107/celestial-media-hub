@@ -1,0 +1,62 @@
+import { expect, describe, test, vi, beforeEach } from 'vitest';
+import { POST } from '../../app/api/audio-trim/route';
+import { NextRequest } from 'next/server';
+import fs from 'node:fs';
+import * as tempExt from '../../lib/temp';
+import * as ffmpegExt from '../../lib/ffmpeg';
+
+vi.mock('../../lib/temp', () => ({
+  writeInputFile: vi.fn(),
+  cleanupJobDir: vi.fn(),
+  createJobDir: vi.fn().mockReturnValue('/mock/trimPath')
+}));
+vi.mock('../../lib/ffmpeg', () => ({ executeFfmpeg: vi.fn() }));
+
+describe('/api/audio-trim POST', () => {
+  beforeEach(() => { 
+    vi.clearAllMocks(); 
+    vi.spyOn(fs, 'readFileSync').mockReturnValue(Buffer.from('mockAudio'));
+    vi.spyOn(fs, 'writeFileSync').mockImplementation(() => undefined as any);
+  });
+
+  test('validates merge configurations and correctly applies file list mapping for FFMPEG', async () => {
+    const formData = new FormData();
+    formData.append('mode', 'merge');
+    formData.append('outputFormat', 'mp3');
+    formData.append('files', new File(['mock'], 'one.mp3', { type: 'audio/mpeg' }));
+    formData.append('files', new File(['mock'], 'two.mp3', { type: 'audio/mpeg' }));
+    
+    const req = { formData: async () => formData } as any as NextRequest;
+
+    vi.mocked(tempExt.writeInputFile).mockResolvedValueOnce('/mock/trimPath/one.mp3').mockResolvedValueOnce('/mock/trimPath/two.mp3');
+    
+    const mockStream = new ReadableStream({
+      start(c) {
+        c.enqueue(new TextEncoder().encode('data: {"progress":50}\n\n'));
+        c.enqueue(new TextEncoder().encode('data: {"status":"done"}\n\n'));
+        c.close();
+      }
+    });
+
+    vi.mocked(ffmpegExt.executeFfmpeg).mockReturnValue(mockStream);
+
+    const res = await POST(req);
+    
+    const reader = res.body?.getReader();
+    const decoder = new TextDecoder();
+    let text = '';
+    while (true) {
+      const { done, value } = await reader!.read();
+      if (done) break;
+      text += decoder.decode(value);
+    }
+
+    expect(fs.writeFileSync).toHaveBeenCalledWith('/mock/trimPath/files.txt', "file '/mock/trimPath/one.mp3'\nfile '/mock/trimPath/two.mp3'");
+    expect(ffmpegExt.executeFfmpeg).toHaveBeenCalledWith(
+        '/tmp/NON_EXISTENT_DUMMY', 
+        '/mock/trimPath/files.txt', 
+        ['-f', 'concat', '-safe', '0', '-i', '/mock/trimPath/files.txt', '-c:a', 'libmp3lame', '-y', '/mock/trimPath/processed.mp3']
+    );
+    expect(text).toContain('"fileBase64":"bW9ja0F1ZGlv"');
+  });
+});
