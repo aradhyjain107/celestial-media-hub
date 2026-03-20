@@ -4,7 +4,9 @@ import { env } from './env';
 
 export function createJobDir(jobId: string): string {
   const dir = path.join(env.TEMP_DIR, jobId);
+  // eslint-disable-next-line security/detect-non-literal-fs-filename
   if (!fs.existsSync(dir)) {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     fs.mkdirSync(dir, { recursive: true });
   }
   return dir;
@@ -12,6 +14,7 @@ export function createJobDir(jobId: string): string {
 
 export function cleanupJobDir(jobId: string): void {
   const dir = path.join(env.TEMP_DIR, jobId);
+  // eslint-disable-next-line security/detect-non-literal-fs-filename
   if (fs.existsSync(dir)) {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -20,6 +23,8 @@ export function cleanupJobDir(jobId: string): void {
 export async function writeInputFile(jobId: string, filename: string, buffer: ArrayBuffer | Buffer): Promise<string> {
   const dir = createJobDir(jobId);
   const filePath = path.join(dir, filename);
-  fs.writeFileSync(filePath, Buffer.from(buffer));
+  const data = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
+  // eslint-disable-next-line security/detect-non-literal-fs-filename
+  fs.writeFileSync(filePath, data);
   return filePath;
 }

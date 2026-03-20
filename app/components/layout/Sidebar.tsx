@@ -31,7 +31,7 @@ export function Sidebar() {
           return (
             <Link key={item.path} href={item.path} style={{ textDecoration: 'none', color: 'inherit' }}>
               <div className={`nav-item ${isActive ? 'active' : ''}`}>
-                <div className="nav-index">{num} //</div>
+                <div className="nav-index">{num} {`//`}</div>
                 <div className="nav-name">{item.label}</div>
               </div>
             </Link>
