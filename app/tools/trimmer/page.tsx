@@ -1,5 +1,7 @@
 // app/tools/trimmer/page.tsx – Audio Trimmer UI (TRIM & MERGE modes)
 // ---------------------------------------------------------------
+'use client'
+
 import React, { useState, useEffect, useRef } from 'react';
 import { FileDropzone } from '../../components/ui/FileDropzone';
 import WaveformCanvas from '../../components/waveform/WaveformCanvas';

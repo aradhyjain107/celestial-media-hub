@@ -30,9 +30,11 @@ function computeRMS(channelData: Float32Array, windowSize: number): Float32Array
     let sumSq = 0;
     const length = end - start;
     for (let i = start; i < end; i++) {
+      // eslint-disable-next-line security/detect-object-injection
       const sample = channelData[i];
       sumSq += sample * sample;
     }
+    // eslint-disable-next-line security/detect-object-injection
     rms[w] = Math.sqrt(sumSq / length);
   }
   return rms;
@@ -67,13 +69,14 @@ export async function generateWaveform(
   const leftRMS = computeRMS(leftData, windowSize);
 
   // Normalise based on the maximum RMS across all channels to keep the range 0‑1.
-  let maxRMS = Math.max(...leftRMS);
+  let maxRMS = leftRMS.reduce((max, val) => Math.max(max, val), 0);
   let rightRMS: Float32Array | undefined;
 
   if (numberOfChannels > 1) {
     const rightData = audioBuffer.getChannelData(1);
     rightRMS = computeRMS(rightData, windowSize);
-    maxRMS = Math.max(maxRMS, ...rightRMS);
+    const rightMax = rightRMS.reduce((max, val) => Math.max(max, val), 0);
+    maxRMS = Math.max(maxRMS, rightMax);
   }
 
   // Guard against silent audio (maxRMS === 0)

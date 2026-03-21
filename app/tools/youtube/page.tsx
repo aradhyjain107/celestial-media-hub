@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import Image from 'next/image';
 
 /* ── Format / Quality definitions ── */
 const FORMATS = ['mp3', 'm4a', 'wav', 'mp4'] as const;
@@ -374,10 +375,12 @@ export default function YouTubeDownloader() {
             {videoInfo && (
               <div style={{ display: 'flex', gap: '16px', padding: '16px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }} data-testid="video-info">
                 {videoInfo.thumbnail && (
-                  <img
+                  <Image
                     src={videoInfo.thumbnail}
                     alt={videoInfo.title}
-                    style={{ width: '120px', height: '68px', objectFit: 'cover', border: '1px solid var(--border)', flexShrink: 0 }}
+                    width={120}
+                    height={68}
+                    style={{ objectFit: 'cover', border: '1px solid var(--border)', flexShrink: 0 }}
                   />
                 )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 }}>

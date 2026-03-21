@@ -8,6 +8,8 @@ export interface FileDropzoneProps {
   multiple?: boolean;
   formatsListText?: string;
   maxSizeMB?: number;
+  testId?: string;
+  heading?: string;
 }
 
 export function FileDropzone({ 
@@ -15,7 +17,9 @@ export function FileDropzone({
   acceptedTypes = [], 
   multiple = true, 
   formatsListText = 'Accepted formats: .*', 
-  maxSizeMB = 5000 
+  maxSizeMB = 5000,
+  testId = 'dropzone',
+  heading = 'Drop media to begin'
 }: FileDropzoneProps) {
   const [isActive, setIsActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -62,7 +66,7 @@ export function FileDropzone({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       onClick={() => fileInputRef.current?.click()}
-      data-testid="dropzone"
+      data-testid={testId}
     >
       <input 
         type="file" 
@@ -71,11 +75,11 @@ export function FileDropzone({
         multiple={multiple}
         accept={acceptedTypes.length > 0 ? acceptedTypes.join(',') : undefined}
         onChange={(e) => processFiles(e.target.files)}
-        data-testid="file-input"
+        data-testid={testId === 'dropzone' ? 'file-input' : `${testId}-input`}
       />
       <div className="target-crosshair"></div>
       <div className="drop-instruction">
-        <h3>Drop media to begin</h3>
+        <h3>{heading}</h3>
         <p>{formatsListText}</p>
       </div>
     </div>

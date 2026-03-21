@@ -35,7 +35,7 @@ export default function Dashboard() {
               <Link key={t.path} href={t.path} className="group flex flex-col justify-between border border-[var(--border)] bg-[var(--bg)] p-6 h-48 hover:bg-[#111] transition-all relative overflow-hidden cursor-pointer" style={{ textDecoration: 'none' }}>
                  <div className="absolute top-0 left-0 w-1 h-full bg-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity" />
                  <div>
-                   <span className="nav-index transition-colors group-hover:text-[var(--accent)]">{t.num} //</span>
+                   <span className="nav-index transition-colors group-hover:text-[var(--accent)]">{t.num}{' //'}</span>
                    <h3 className="nav-name mt-2" style={{ color: 'var(--text-main)', fontSize: '16px' }}>{t.name}</h3>
                    <p className="mt-2" style={{ color: 'var(--text-muted)', lineHeight: '1.4', fontSize: '13px' }}>{t.desc}</p>
                  </div>

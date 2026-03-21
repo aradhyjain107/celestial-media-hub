@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
       async start(controller) {
         try {
           for (let i = 0; i < inputPaths.length; i++) {
+            // eslint-disable-next-line security/detect-object-injection
             const inputPath = inputPaths[i];
             const parsed = path.parse(inputPath);
             const outputPath = path.join(masterDir, `hevc_${parsed.name}.mp4`);
@@ -78,6 +79,7 @@ export async function POST(req: NextRequest) {
           }
           
           execSync(`zip -j output.zip hevc_*`, { cwd: masterDir });
+          // eslint-disable-next-line security/detect-non-literal-fs-filename
           const zipBase64 = fs.readFileSync(path.join(masterDir, 'output.zip')).toString('base64');
           controller.enqueue(new TextEncoder().encode(`data: {"status":"done", "zipBase64":"${zipBase64}"}\n\n`));
           

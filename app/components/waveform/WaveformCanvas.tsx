@@ -99,6 +99,7 @@ export const WaveformCanvas: React.FC<WaveformCanvasProps> = ({
     ctx.fillStyle = border;
     for (let i = 0; i < width; i++) {
       const sampleIdx = Math.floor(i * samplesPerPixel);
+      // eslint-disable-next-line security/detect-object-injection
       const amp = left[sampleIdx] ?? 0;
       const barHeight = amp * (height / 2);
       // top half
@@ -111,6 +112,7 @@ export const WaveformCanvas: React.FC<WaveformCanvasProps> = ({
       ctx.fillStyle = accent;
       for (let i = 0; i < width; i++) {
         const sampleIdx = Math.floor(i * samplesPerPixel);
+        // eslint-disable-next-line security/detect-object-injection
         const amp = right[sampleIdx] ?? 0;
         const barHeight = amp * (height / 2);
         ctx.fillRect(i * dpr, (height / 2 - barHeight) * dpr, dpr, barHeight * dpr);

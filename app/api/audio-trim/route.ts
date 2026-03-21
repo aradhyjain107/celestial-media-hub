@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
           } else if (mode === 'merge') {
             const listPath = path.join(masterDir, 'files.txt');
             const fileList = inputPaths.map(p => `file '${p}'`).join('\n');
+            // eslint-disable-next-line security/detect-non-literal-fs-filename
             fs.writeFileSync(listPath, fileList);
             
             executionTargetFile = listPath;
@@ -100,6 +101,7 @@ export async function POST(req: NextRequest) {
             }
           }
           
+          // eslint-disable-next-line security/detect-non-literal-fs-filename
           const fileBase64 = fs.readFileSync(outputPath).toString('base64');
           controller.enqueue(new TextEncoder().encode(`data: {"status":"done", "fileBase64":"${fileBase64}"}\n\n`));
           

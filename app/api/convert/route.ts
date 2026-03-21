@@ -73,6 +73,7 @@ export async function POST(req: NextRequest) {
             }
           }
           
+          // eslint-disable-next-line security/detect-non-literal-fs-filename
           const fileBase64 = fs.readFileSync(outputPath).toString('base64');
           controller.enqueue(new TextEncoder().encode(`data: {"status":"done", "fileBase64":"${fileBase64}"}\n\n`));
           

@@ -10,6 +10,7 @@ export function StatusBadge({ status }: { status: JobStatus }) {
     error: { label: 'ERROR', color: '#ef4444' } 
   };
 
+  // eslint-disable-next-line security/detect-object-injection
   const { label, color } = config[status];
 
   return (

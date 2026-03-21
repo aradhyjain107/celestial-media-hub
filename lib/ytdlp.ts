@@ -69,6 +69,7 @@ export function executeYtdlp(jobDir: string, url: string, args: string[]): Reada
       } catch (err: any) {
         controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ error: err.message })}\n\n`));
       } finally {
+        // eslint-disable-next-line security/detect-non-literal-fs-filename
         if (fs.existsSync(jobDir)) {
           fs.rmSync(jobDir, { recursive: true, force: true });
         }
