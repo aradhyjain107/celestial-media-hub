@@ -107,6 +107,7 @@ export default function UniversalConverter() {
 
   const handlePresetSelect = useCallback((p: Exclude<Preset, 'custom'>) => {
     setPreset(p);
+    // eslint-disable-next-line security/detect-object-injection
     const config = PRESET_CONFIG[p];
     setResolution(config.resolution);
   }, []);
