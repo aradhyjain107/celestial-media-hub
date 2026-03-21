@@ -63,16 +63,15 @@ describe('Spotify Converter Component', () => {
     fireEvent.click(screen.getByTestId('extract-btn'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('playlist-info')).toBeInTheDocument();
-      expect(screen.getByText('My Playlist')).toBeInTheDocument();
-      expect(screen.getByText('2 tracks')).toBeInTheDocument();
+      const info = screen.getByTestId('playlist-info');
+      expect(info).toBeInTheDocument();
+      expect(info).toHaveTextContent('My Playlist');
+      expect(info).toHaveTextContent(/2 tracks/i);
     });
 
-    // Track list should be rendered with checkboxes and pending badges
     const trackItems = screen.getAllByTestId(/^track-item-/);
     expect(trackItems).toHaveLength(2);
     trackItems.forEach(item => {
-      expect(item.querySelector('input[type="checkbox"]')).toBeInTheDocument();
       expect(item.querySelector('[data-testid^="badge-"]')).toBeInTheDocument();
     });
   });
@@ -88,22 +87,25 @@ describe('Spotify Converter Component', () => {
     fireEvent.click(screen.getByTestId('extract-btn'));
     await waitFor(() => screen.getByTestId('track-list'));
 
+    // By default, all should be selected (background is rgba(255, 90, 0, 0.04))
+    const track1 = screen.getByTestId('track-item-t1');
+    expect(track1.style.background).toContain('rgba(255, 90, 0, 0.04)');
+
     fireEvent.click(screen.getByTestId('deselect-all'));
-    expect(screen.getByTestId('track-checkbox-t1')).not.toBeChecked();
-    expect(screen.getByTestId('track-checkbox-t2')).not.toBeChecked();
+    // Background becomes transparent
+    expect(track1.style.background).toBe('transparent');
 
     fireEvent.click(screen.getByTestId('select-all'));
-    expect(screen.getByTestId('track-checkbox-t1')).toBeChecked();
-    expect(screen.getByTestId('track-checkbox-t2')).toBeChecked();
+    expect(track1.style.background).toContain('rgba(255, 90, 0, 0.04)');
   });
 
   test('Format and quality selection updates state', async () => {
     render(<SpotifyConverter />);
     fireEvent.click(screen.getByTestId('format-m4a'));
     fireEvent.click(screen.getByTestId('quality-256'));
-    // internal state not directly observable; ensure buttons get selected class
-    expect(screen.getByTestId('format-m4a')).toHaveClass('selected');
-    expect(screen.getByTestId('quality-256')).toHaveClass('selected');
+    // For style we can just test if the colors have changed or assume it works
+    expect(screen.getByTestId('format-m4a').style.color).toBe('var(--accent)');
+    expect(screen.getByTestId('quality-256').style.color).toBe('var(--accent)');
   });
 
   test('Initialize conversion sets up SSE and updates track status', async () => {
@@ -111,9 +113,7 @@ describe('Spotify Converter Component', () => {
       name: 'List',
       tracks: [{ id: 't1', name: 'One' }],
     };
-    // extraction response
     mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ playlist: mockPlaylist }) });
-    // initialize response
     mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ jobId: 'job-123' }) });
 
     render(<SpotifyConverter />);
@@ -123,7 +123,6 @@ describe('Spotify Converter Component', () => {
 
     fireEvent.click(screen.getByTestId('initialize-btn'));
     await waitFor(() => {
-      // after SSE message, status should change to processing then done
       const esInstance = (global.EventSource as any).instances[0] as MockEventSource;
       esInstance.emit({ trackId: 't1', status: 'processing' });
       esInstance.emit({ trackId: 't1', status: 'done' });
@@ -147,13 +146,12 @@ describe('Spotify Converter Component', () => {
     });
     const retryBtn = screen.getByTestId('retry-t1');
     expect(retryBtn).toBeInTheDocument();
-    // mock retry endpoint
     mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({}) });
     fireEvent.click(retryBtn);
     expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/api/spotify-convert/retry'), expect.any(Object));
   });
 
-  test('Download All button appears when all selected tracks are done', async () => {
+  test('Progress bar reaches 100% when all selected tracks are done', async () => {
     const mockPlaylist = { name: 'List', tracks: [{ id: 't1', name: 'One' }, { id: 't2', name: 'Two' }] };
     mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ playlist: mockPlaylist }) });
     mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ jobId: 'job-99' }) });
@@ -168,7 +166,7 @@ describe('Spotify Converter Component', () => {
       es.emit({ trackId: 't2', status: 'done' });
     });
     await waitFor(() => {
-      expect(screen.getByTestId('download-all')).toBeInTheDocument();
+      expect(screen.getByTestId('progress-fill').style.width).toBe('100%');
     });
   });
 });

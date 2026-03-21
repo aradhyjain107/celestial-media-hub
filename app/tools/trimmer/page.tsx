@@ -34,6 +34,9 @@ export default function AudioTrimmerPage() {
   const [fadeIn, setFadeIn] = useState(0);
   const [fadeOut, setFadeOut] = useState(0);
   const [zoom, setZoom] = useState(10); // seconds visible
+  const [statusText, setStatusText] = useState('AWAITING PAYLOAD');
+  const [progress, setProgress] = useState(0);
+  const [processing, setProcessing] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -44,6 +47,7 @@ export default function AudioTrimmerPage() {
       setFiles([file]);
       const url = URL.createObjectURL(file);
       setAudioUrl(url);
+      setStatusText(`LOADED: ${file.name}`);
       const buffer = await readFileAsArrayBuffer(file);
       // Use a temporary Audio element to get duration (needed before waveform)
       const tempAudio = new Audio(url);
@@ -61,6 +65,7 @@ export default function AudioTrimmerPage() {
     } else {
       // MERGE mode – just store files, no waveform
       setFiles(prev => [...prev, ...selected]);
+      setStatusText(`${files.length + selected.length} FILES QUEUED`);
     }
   };
 
@@ -111,9 +116,15 @@ export default function AudioTrimmerPage() {
     setFadeIn(0);
     setFadeOut(0);
     setZoom(10);
+    setStatusText('AWAITING PAYLOAD');
+    setProgress(0);
   };
 
   const handleInitialize = async () => {
+    if (files.length === 0 || processing) return;
+    setProcessing(true);
+    setProgress(0);
+    setStatusText('PROCESSING...');
     if (mode === 'TRIM') {
       const payload = {
         fileName: files[0]?.name,
@@ -121,7 +132,7 @@ export default function AudioTrimmerPage() {
         trimEnd,
         fadeIn,
         fadeOut,
-        format: 'mp3', // placeholder – UI will later allow selection
+        format: 'mp3',
       };
       await fetch('/api/audio-trim', {
         method: 'POST',
@@ -130,7 +141,7 @@ export default function AudioTrimmerPage() {
       });
     } else {
       const payload = {
-        files: files.map(f => f.name), // In real app we would upload FormData
+        files: files.map(f => f.name),
         format: 'mp3',
       };
       await fetch('/api/audio-trim', {
@@ -139,145 +150,218 @@ export default function AudioTrimmerPage() {
         body: JSON.stringify(payload),
       });
     }
+    setProcessing(false);
   };
 
+  const hasFiles = files.length > 0;
+
   return (
-    <div className="dropzone-container" style={{ display: 'flex', flexDirection: 'row', height: '100%' }}>
-      {/* Left side – either Dropzone or Waveform */}
-      <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-        {files.length === 0 ? (
-          <FileDropzone
-            onFilesSelected={handleFilesSelected}
-            acceptedTypes={['mp3', 'wav', 'flac', 'm4a', 'aac']}
-            multiple={mode === 'MERGE'}
-            formatsListText="Accepted formats: MP3, WAV, FLAC, M4A, AAC"
-          />
-        ) : (
-          <>
+    <>
+      {/* Top utility bar */}
+      <div className="top-utility-bar grid-line-bottom">
+        <div className="left-stats">
+          <span className="tiny-label">CELESTIAL //</span>
+        </div>
+        <div className="right-actions">
+          <span className="tiny-label">V. 2.0.0</span>
+        </div>
+      </div>
+
+      {/* Workspace */}
+      <div className="workspace">
+        {/* Left: dropzone or waveform */}
+        <div className="dropzone-container">
+          <div className="tool-header">
+            <div className="tiny-label" style={{ marginBottom: '16px' }}>TARGET // 06</div>
+            <h2 className="tool-title">Audio<br/>Trim.</h2>
+          </div>
+
+          {!hasFiles ? (
+            <FileDropzone
+              onFilesSelected={handleFilesSelected}
+              acceptedTypes={['mp3', 'wav', 'flac', 'm4a', 'aac']}
+              multiple={mode === 'MERGE'}
+              formatsListText="Accepted formats: MP3, WAV, FLAC, M4A, AAC"
+            />
+          ) : (
+            <>
+              {mode === 'TRIM' && waveform && (
+                <WaveformCanvas
+                  left={waveform.left}
+                  right={waveform.right}
+                  duration={duration}
+                  currentTime={currentTime}
+                  trimStart={trimStart}
+                  trimEnd={trimEnd}
+                  zoom={zoom}
+                  onSeek={handleSeek}
+                  onSelect={handleSelect}
+                />
+              )}
+              {/* Hidden audio element for playback */}
+              <audio ref={audioRef} src={audioUrl} preload="metadata" />
+            </>
+          )}
+        </div>
+
+        {/* Right: options panel */}
+        <aside className="options-panel grid-line-left">
+          <div className="options-header grid-line-bottom">
+            <span className="tiny-label">PROCESSING PARAMETERS</span>
+          </div>
+          <div className="options-scroll">
+            {/* Mode toggle */}
+            <div className="form-group">
+              <div className="form-header">
+                <span className="tiny-label">MODE</span>
+                <span className="mono-data" style={{ color: 'var(--accent)' }}>{mode}</span>
+              </div>
+              <select
+                value={mode}
+                onChange={e => handleModeToggle(e.target.value as TrimmerMode)}
+                data-testid="mode-select"
+                style={{
+                  width: '100%',
+                  background: 'transparent',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-main)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '12px',
+                  padding: '8px',
+                  cursor: 'pointer',
+                }}
+              >
+                <option value="TRIM">TRIM</option>
+                <option value="MERGE">MERGE</option>
+              </select>
+            </div>
+
+            {/* Output format */}
+            <div className="form-group">
+              <div className="form-header">
+                <span className="tiny-label">OUTPUT FORMAT</span>
+              </div>
+              <select
+                data-testid="format-select"
+                style={{
+                  width: '100%',
+                  background: 'transparent',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-main)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '12px',
+                  padding: '8px',
+                  cursor: 'pointer',
+                }}
+              >
+                <option value="mp3">MP3</option>
+                <option value="wav">WAV</option>
+                <option value="flac">FLAC</option>
+                <option value="m4a">M4A</option>
+                <option value="aac">AAC</option>
+              </select>
+            </div>
+
+            {/* Fade inputs (only in TRIM) */}
+            {mode === 'TRIM' && (
+              <>
+                <div className="form-group">
+                  <div className="form-header">
+                    <span className="tiny-label">FADE IN</span>
+                    <span className="mono-data" data-testid="fade-in-value">{fadeIn}s</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={5}
+                    step={0.1}
+                    value={fadeIn}
+                    onChange={e => setFadeIn(parseFloat(e.target.value))}
+                    data-testid="fade-in-slider"
+                    style={{ width: '100%', accentColor: 'var(--accent)' }}
+                  />
+                </div>
+                <div className="form-group">
+                  <div className="form-header">
+                    <span className="tiny-label">FADE OUT</span>
+                    <span className="mono-data" data-testid="fade-out-value">{fadeOut}s</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={5}
+                    step={0.1}
+                    value={fadeOut}
+                    onChange={e => setFadeOut(parseFloat(e.target.value))}
+                    data-testid="fade-out-slider"
+                    style={{ width: '100%', accentColor: 'var(--accent)' }}
+                  />
+                </div>
+              </>
+            )}
+
             {mode === 'TRIM' && waveform && (
-              <WaveformCanvas
-                left={waveform.left}
-                right={waveform.right}
-                duration={duration}
+              <WaveformControls
+                isPlaying={isPlaying}
                 currentTime={currentTime}
+                duration={duration}
                 trimStart={trimStart}
                 trimEnd={trimEnd}
                 zoom={zoom}
-                onSeek={handleSeek}
-                onSelect={handleSelect}
+                onPlayPause={togglePlay}
+                onZoomIn={handleZoomIn}
+                onZoomOut={handleZoomOut}
+                onTrimChange={(s, e) => {
+                  setTrimStart(s);
+                  setTrimEnd(e);
+                }}
               />
             )}
-            {/* Hidden audio element for playback */}
-            <audio ref={audioRef} src={audioUrl} preload="metadata" />
-          </>
-        )}
+
+            {/* Merge file list (simple) */}
+            {mode === 'MERGE' && files.length > 0 && (
+              <div className="form-group">
+                <div className="form-header">
+                  <span className="tiny-label">FILES TO MERGE</span>
+                  <span className="mono-data">{files.length}</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {files.map((f, idx) => (
+                    <div key={idx} className="mono-data" data-testid="merge-file-item" style={{ padding: '4px 0', borderBottom: '1px solid rgba(42,42,42,0.5)' }}>
+                      {f.name}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </aside>
       </div>
 
-      {/* Right side – options panel */}
-      <div className="options-panel">
-        <div className="options-header">
-          <h2 className="mono-data" style={{ color: 'var(--accent)' }}>{mode === 'TRIM' ? 'Trim Mode' : 'Merge Mode'}</h2>
-        </div>
-        <div className="options-scroll">
-          {/* Mode toggle */}
-          <div style={{ marginBottom: '16px' }}>
-            <label className="tiny-label" htmlFor="mode-select">Mode</label>
-            <select
-              id="mode-select"
-              value={mode}
-              onChange={e => handleModeToggle(e.target.value as TrimmerMode)}
-              className="action-btn"
-              data-testid="mode-select"
-            >
-              <option value="TRIM">TRIM</option>
-              <option value="MERGE">MERGE</option>
-            </select>
+      {/* Bottom progress section — INITIALIZE button lives here */}
+      <div className="progress-section grid-line-top">
+        <button
+          className="action-btn grid-line-right"
+          onClick={handleInitialize}
+          disabled={!hasFiles || processing}
+          data-testid="initialize-btn"
+          style={{ opacity: (!hasFiles || processing) ? 0.5 : 1 }}
+        >
+          {processing ? 'PROCESSING...' : 'INITIALIZE'}
+        </button>
+
+        <div className="progress-track-area">
+          <div className="progress-meta">
+            <span className="tiny-label">{statusText}</span>
+            <span className="mono-data">
+              {hasFiles ? `FILE: ${files[0].name}` : 'QUEUE: 0 FILES'}
+            </span>
           </div>
-
-          {/* Output format selector (placeholder) */}
-          <div style={{ marginBottom: '16px' }}>
-            <label className="tiny-label" htmlFor="format-select">Output format</label>
-            <select id="format-select" className="action-btn" data-testid="format-select">
-              <option value="mp3">MP3</option>
-              <option value="wav">WAV</option>
-              <option value="flac">FLAC</option>
-              <option value="m4a">M4A</option>
-              <option value="aac">AAC</option>
-            </select>
+          <div className="track">
+            <div className="fill" style={{ width: `${progress}%` }} data-testid="progress-fill"></div>
           </div>
-
-          {/* Fade inputs (only in TRIM) */}
-          {mode === 'TRIM' && (
-            <>
-              <div style={{ marginBottom: '16px' }}>
-                <label className="tiny-label" htmlFor="fade-in">Fade In (s)</label>
-                <input
-                  id="fade-in"
-                  type="range"
-                  min={0}
-                  max={5}
-                  step={0.1}
-                  value={fadeIn}
-                  onChange={e => setFadeIn(parseFloat(e.target.value))}
-                  data-testid="fade-in-slider"
-                />
-                <span className="mono-data" data-testid="fade-in-value">{fadeIn}s</span>
-              </div>
-              <div style={{ marginBottom: '16px' }}>
-                <label className="tiny-label" htmlFor="fade-out">Fade Out (s)</label>
-                <input
-                  id="fade-out"
-                  type="range"
-                  min={0}
-                  max={5}
-                  step={0.1}
-                  value={fadeOut}
-                  onChange={e => setFadeOut(parseFloat(e.target.value))}
-                  data-testid="fade-out-slider"
-                />
-                <span className="mono-data" data-testid="fade-out-value">{fadeOut}s</span>
-              </div>
-            </>
-          )}
-
-          {mode === 'TRIM' && waveform && (
-            <WaveformControls
-              isPlaying={isPlaying}
-              currentTime={currentTime}
-              duration={duration}
-              trimStart={trimStart}
-              trimEnd={trimEnd}
-              zoom={zoom}
-              onPlayPause={togglePlay}
-              onZoomIn={handleZoomIn}
-              onZoomOut={handleZoomOut}
-              onTrimChange={(s, e) => {
-                setTrimStart(s);
-                setTrimEnd(e);
-              }}
-            />
-          )}
-
-          {/* Merge file list (simple) */}
-          {mode === 'MERGE' && files.length > 0 && (
-            <div style={{ marginBottom: '16px' }}>
-              <h3 className="tiny-label">Files to merge</h3>
-              <ul>
-                {files.map((f, idx) => (
-                  <li key={idx} className="mono-data" data-testid="merge-file-item">
-                    {f.name}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Initialize button */}
-          <button className="action-btn" onClick={handleInitialize} data-testid="initialize-btn">
-            Initialize
-          </button>
         </div>
       </div>
-    </div>
+    </>
   );
 }

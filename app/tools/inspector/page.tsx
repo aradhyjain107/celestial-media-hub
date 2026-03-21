@@ -177,7 +177,7 @@ export default function MediaInspector() {
         </div>
 
         <aside className="options-panel grid-line-left">
-          {status === 'READY' && (
+          {data && !compareData && (
             <div className="flex flex-col items-center justify-center h-full text-[#444444]">
               <span className="tiny-label">COMPARE FILE</span>
               <FileDropzone

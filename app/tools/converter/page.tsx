@@ -230,9 +230,9 @@ export default function UniversalConverter() {
       <div className="workspace">
         {/* Left: Dropzone */}
         <div className="dropzone-container">
-          <div className="tool-header" style={{ padding: '24px', paddingBottom: '48px' }}>
+          <div className="tool-header">
             <div className="tiny-label" style={{ marginBottom: '16px' }}>TARGET // 04</div>
-            <h2 className="tool-title" style={{ fontSize: '6vw', fontWeight: 900, lineHeight: 0.85, letterSpacing: '-0.04em', marginLeft: '-4px', textTransform: 'capitalize' }}>
+            <h2 className="tool-title">
               Universal<br/>Convert.
             </h2>
           </div>

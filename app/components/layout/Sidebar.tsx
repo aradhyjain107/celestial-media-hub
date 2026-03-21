@@ -20,7 +20,7 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
-        <h1>SYS.CORE//</h1>
+        <h1>CELESTIAL //</h1>
       </div>
       
       <div className="nav-list">
