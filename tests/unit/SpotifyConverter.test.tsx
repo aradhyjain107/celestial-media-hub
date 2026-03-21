@@ -6,10 +6,13 @@ import SpotifyConverter from '../../app/tools/spotify/page';
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
-// Mock EventSource
+// Mock EventSource with instance tracking
 class MockEventSource {
+  static instances: MockEventSource[] = [];
   onmessage: ((e: MessageEvent) => void) | null = null;
-  constructor(public url: string) {}
+  constructor(public url: string) {
+    MockEventSource.instances.push(this);
+  }
   close() {}
   // Helper to emit messages
   emit(data: any) {
@@ -121,7 +124,7 @@ describe('Spotify Converter Component', () => {
     fireEvent.click(screen.getByTestId('initialize-btn'));
     await waitFor(() => {
       // after SSE message, status should change to processing then done
-      const esInstance = (global.EventSource as any).mock.instances[0] as MockEventSource;
+      const esInstance = (global.EventSource as any).instances[0] as MockEventSource;
       esInstance.emit({ trackId: 't1', status: 'processing' });
       esInstance.emit({ trackId: 't1', status: 'done' });
     });
@@ -139,7 +142,7 @@ describe('Spotify Converter Component', () => {
     await waitFor(() => screen.getByTestId('track-list'));
     fireEvent.click(screen.getByTestId('initialize-btn'));
     await waitFor(() => {
-      const es = (global.EventSource as any).mock.instances[0] as MockEventSource;
+      const es = (global.EventSource as any).instances[0] as MockEventSource;
       es.emit({ trackId: 't1', status: 'error' });
     });
     const retryBtn = screen.getByTestId('retry-t1');
@@ -160,10 +163,12 @@ describe('Spotify Converter Component', () => {
     await waitFor(() => screen.getByTestId('track-list'));
     fireEvent.click(screen.getByTestId('initialize-btn'));
     await waitFor(() => {
-      const es = (global.EventSource as any).mock.instances[0] as MockEventSource;
+      const es = (global.EventSource as any).instances[0] as MockEventSource;
       es.emit({ trackId: 't1', status: 'done' });
       es.emit({ trackId: 't2', status: 'done' });
     });
-    expect(screen.getByTestId('download-all')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('download-all')).toBeInTheDocument();
+    });
   });
 });

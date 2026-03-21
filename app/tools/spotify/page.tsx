@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useState, useEffect, useRef } from 'react';
 import { StatusBadge, JobStatus } from '../../components/ui/StatusBadge';
 
@@ -99,13 +101,18 @@ export default function SpotifyConverter() {
       // Open SSE stream
       const es = new EventSource(`${process.env.NEXT_PUBLIC_API_BASE_URL ?? ''}/api/spotify-convert?jobId=${jobId}`);
       eventSourceRef.current = es;
-      es.onmessage = e => {
+      const handleMessage = (e: MessageEvent) => {
         const data = JSON.parse(e.data);
         const { trackId, status } = data; // status: 'processing' | 'done' | 'error'
         setTracks(prev =>
           prev.map(t => (t.id === trackId ? { ...t, status } : t))
         );
       };
+      // Support both onmessage property and addEventListener for compatibility with mocks
+      es.onmessage = handleMessage;
+      if (typeof es.addEventListener === 'function') {
+        es.addEventListener('message', handleMessage);
+      }
     } catch (err: any) {
       // handle error
     }
@@ -173,40 +180,38 @@ export default function SpotifyConverter() {
           </div>
         )}
 
-        {/* Options Panel */}
-        {tracks.length > 0 && (
-          <aside className="options-panel grid-line-left">
-            <div className="options-header grid-line-bottom">
-              <span className="tiny-label">OPTIONS</span>
+        {/* Options Panel — always visible */}
+        <aside className="options-panel grid-line-left">
+          <div className="options-header grid-line-bottom">
+            <span className="tiny-label">OPTIONS</span>
+          </div>
+          <div className="options-section">
+            <div className="format-tiles">
+              {['mp3', 'm4a', 'wav'].map(f => (
+                <button
+                  key={f}
+                  onClick={() => setFormat(f)}
+                  data-testid={`format-${f}`}
+                  className={`format-tile ${format === f ? 'selected' : ''}`}
+                >
+                  {f.toUpperCase()}
+                </button>
+              ))}
             </div>
-            <div className="options-section">
-              <div className="format-tiles">
-                {['mp3', 'm4a', 'wav'].map(f => (
-                  <button
-                    key={f}
-                    onClick={() => setFormat(f)}
-                    data-testid={`format-${f}`}
-                    className={`format-tile ${format === f ? 'selected' : ''}`}
-                  >
-                    {f.toUpperCase()}
-                  </button>
-                ))}
-              </div>
-              <div className="quality-chips">
-                {['128', '192', '256', '320'].map(q => (
-                  <button
-                    key={q}
-                    onClick={() => setQuality(q)}
-                    data-testid={`quality-${q}`}
-                    className={`quality-chip ${quality === q ? 'selected' : ''}`}
-                  >
-                    {q} kbps
-                  </button>
-                ))}
-              </div>
+            <div className="quality-chips">
+              {['128', '192', '256', '320'].map(q => (
+                <button
+                  key={q}
+                  onClick={() => setQuality(q)}
+                  data-testid={`quality-${q}`}
+                  className={`quality-chip ${quality === q ? 'selected' : ''}`}
+                >
+                  {q} kbps
+                </button>
+              ))}
             </div>
-          </aside>
-        )}
+          </div>
+        </aside>
 
         {/* Track List */}
         {tracks.length > 0 && (
