@@ -34,3 +34,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+tests/screenshots/diff/
+tests/screenshots/current/
+tests/screenshots/diff-*.png
