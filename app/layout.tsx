@@ -8,8 +8,14 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 const jbMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' });
 
 export const metadata: Metadata = {
-  title: 'CELESTIAL // Media Hub',
-  description: 'Precision Media Engineering Suite',
+  title: {
+    template: '%s // CELESTIAL',
+    default: 'CELESTIAL // Media Hub',
+  },
+  description: 'Local-first media processing toolkit',
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({

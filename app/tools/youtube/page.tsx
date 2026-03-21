@@ -321,7 +321,7 @@ export default function YouTubeDownloader() {
       {/* Workspace */}
       <div className="workspace">
         {/* Left: URL input area (replaces dropzone) */}
-        <div className="dropzone-container">
+        <div className="dropzone-container" style={{ overflow: 'auto' }}>
           <div className="tool-header">
             <div className="tiny-label" style={{ marginBottom: '16px' }}>TARGET // 05</div>
             <h2 className="tool-title">

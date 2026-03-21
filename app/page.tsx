@@ -1,14 +1,19 @@
 import Link from 'next/link';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Dashboard',
+};
 
 export default function Dashboard() {
   const tools = [
     { num: '01', name: 'Dashboard', desc: 'System overview and telemetry routing.', path: '/' },
     { num: '02', name: 'Video Muter', desc: 'Remove or replace audio streams in video files.', path: '/tools/muter' },
     { num: '03', name: 'HEVC Compressor', desc: 'Hardware-accelerated H.265 compression.', path: '/tools/hevc' },
-    { num: '04', name: 'Universal Converter', desc: 'Convert media between standard formats.', path: '/tools/convert' },
+    { num: '04', name: 'Universal Converter', desc: 'Convert media between standard formats.', path: '/tools/converter' },
     { num: '05', name: 'YouTube Downloader', desc: 'Extract streams natively to filesystem.', path: '/tools/youtube' },
-    { num: '06', name: 'Audio Trimmer', desc: 'Merge and split audio with crossfade.', path: '/tools/audio-trim' },
-    { num: '07', name: 'Spotify Converter', desc: 'Scrape and extract audio from embeds.', path: '/tools/spotify-convert' },
+    { num: '06', name: 'Audio Trimmer', desc: 'Merge and split audio with crossfade.', path: '/tools/trimmer' },
+    { num: '07', name: 'Spotify Converter', desc: 'Scrape and extract audio from embeds.', path: '/tools/spotify' },
     { num: '08', name: 'Media Inspector', desc: 'Extract deep FFprobe metadata layers.', path: '/tools/inspector' }
   ];
 

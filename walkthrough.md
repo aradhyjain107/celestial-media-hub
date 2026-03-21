@@ -37,6 +37,22 @@ Celestial Media Hub v2 is a local-first, privacy-focused media processing suite.
 ## SLO results
 ```text
 Route (app)                              Size     First Load JS
+┌ ○ /                                    175 B          96.1 kB
+├ ○ /_not-found                          875 B          88.2 kB
+├ ƒ /api/audio-trim                      0 B                0 B
+├ ƒ /api/convert                         0 B                0 B
+├ ƒ /api/hevc                            0 B                0 B
+├ ƒ /api/inspect                         0 B                0 B
+├ ƒ /api/mute                            0 B                0 B
+├ ƒ /api/spotify-convert                 0 B                0 B
+├ ƒ /api/youtube                         0 B                0 B
+├ ○ /tools/converter                     3.8 kB         91.1 kB
+├ ○ /tools/hevc                          3.64 kB        90.9 kB
+├ ○ /tools/inspector                     2.52 kB        89.8 kB
+├ ○ /tools/muter                         3.39 kB        90.7 kB
+├ ○ /tools/spotify                       3.43 kB        90.7 kB
+├ ○ /tools/trimmer                       4.42 kB        91.7 kB
+└ ○ /tools/youtube                       9.13 kB        96.4 kB
 + First Load JS shared by all            87.3 kB
 ```
 
@@ -60,6 +76,7 @@ Route (app)                              Size     First Load JS
 4. Start development server: `npm run dev`
 
 ## How to run tests
+- **Phase-based verification:** `./verify.sh`
 - **Unit (Vitest):** `npx vitest run`
 - **Visual Regression (Playwright):** `npx playwright test tests/visual/regression.spec.ts`
 
@@ -73,7 +90,13 @@ Route (app)                              Size     First Load JS
 
 ## Git history
 ```text
-4d1326a (HEAD -> main) fix: add ESLint disable comments to converter, hevc, and muter pages
+b27e4e6 fix: full UI audit and consistency pass against stitch-exports
+a4845de chore: update visual regression baselines to final verified state
+82738c3 chore: ignore Playwright diff and current screenshot directories
+12afeef docs: update task.md and MEMORY.md for Phase 4
+86e995a chore: add bootstrap.sh and verify.sh utility scripts
+c0522a3 docs: add final walkthrough.md
+4d1326a fix: add ESLint disable comments to converter, hevc, and muter pages
 663f114 chore: update visual regression baselines
 543037f fix: ESLint errors, security warnings, and failing tests across codebase
 8995503 feat: Spotify Converter page — verified against design
@@ -87,6 +110,4 @@ aabd8cd feat: Media Inspector page — verified against design
 2935f15 feat: Dashboard page — verified against design
 348623b feat: API layer — all backend routes implemented and tested
 bae0c30 feat: shared infrastructure — layout shell + core UI components
-0337061 chore: scaffold Next.js 14 project with full dev toolchain
-aeff229 Initial commit from Create Next App
 ```
