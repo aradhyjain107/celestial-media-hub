@@ -323,7 +323,7 @@ export default function YouTubeDownloader() {
         {/* Left: URL input area (replaces dropzone) */}
         <div className="dropzone-container" style={{ overflow: 'auto' }}>
           <div className="tool-header">
-            <div className="tiny-label" style={{ marginBottom: '16px' }}>TARGET // 05</div>
+            <div className="tiny-label">TARGET // 05</div>
             <h2 className="tool-title">
               YouTube<br/>Download.
             </h2>

@@ -28,11 +28,11 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="workspace p-8 overflow-y-auto w-full">
-        <div className="w-full max-w-7xl mx-auto">
+      <div className="workspace overflow-y-auto w-full">
+        <div className="w-full">
           <div className="tool-header px-0 pb-12">
-            <div className="tiny-label" style={{ marginBottom: '16px' }}>SYSTEM // 01</div>
-            <h2 className="tool-title" style={{ marginLeft: '-4px' }}>Dashboard<br/>Overview.</h2>
+            <div className="tiny-label">TARGET // 01</div>
+            <h2 className="tool-title">System<br/>Overview.</h2>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 w-full">

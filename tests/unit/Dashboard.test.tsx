@@ -5,7 +5,7 @@ import Dashboard from '../../app/page';
 test('Dashboard renders 8 tool cards correctly mapped to routing paths', () => {
   render(<Dashboard />);
   
-  expect(screen.getByText('SYSTEM // 01')).toBeInTheDocument();
+  expect(screen.getByText('TARGET // 01')).toBeInTheDocument();
   expect(screen.getByText('Dashboard')).toBeInTheDocument();
 
   expect(screen.getByText('02 //')).toBeInTheDocument();

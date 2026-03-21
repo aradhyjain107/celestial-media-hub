@@ -158,7 +158,7 @@ export default function VideoMuter() {
         {/* Left: dropzone or batch queue */}
         <div className="dropzone-container">
           <div className="tool-header">
-            <div className="tiny-label" style={{ marginBottom: '16px' }}>TARGET // 02</div>
+            <div className="tiny-label">TARGET // 02</div>
             <h2 className="tool-title">Video<br/>Muter.</h2>
           </div>
 

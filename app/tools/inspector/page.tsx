@@ -166,7 +166,7 @@ export default function MediaInspector() {
       <div className="workspace">
         <div className="dropzone-container">
           <div className="tool-header">
-            <div className="tiny-label" style={{ marginBottom: '16px' }}>TARGET // 08</div>
+            <div className="tiny-label">TARGET // 08</div>
             <h2 className="tool-title">Media<br/>Inspect.</h2>
           </div>
           <FileDropzone

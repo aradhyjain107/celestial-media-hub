@@ -195,7 +195,7 @@ export default function SpotifyConverter() {
         {/* Left: URL input area (replaces dropzone) */}
         <div className="dropzone-container" style={{ overflow: 'auto' }}>
           <div className="tool-header">
-            <div className="tiny-label" style={{ marginBottom: '16px' }}>TARGET // 07</div>
+            <div className="tiny-label">TARGET // 07</div>
             <h2 className="tool-title">Spotify<br/>Convert.</h2>
           </div>
 

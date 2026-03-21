@@ -172,7 +172,7 @@ export default function AudioTrimmerPage() {
         {/* Left: dropzone or waveform */}
         <div className="dropzone-container">
           <div className="tool-header">
-            <div className="tiny-label" style={{ marginBottom: '16px' }}>TARGET // 06</div>
+            <div className="tiny-label">TARGET // 06</div>
             <h2 className="tool-title">Audio<br/>Trim.</h2>
           </div>
 

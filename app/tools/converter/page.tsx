@@ -231,7 +231,7 @@ export default function UniversalConverter() {
         {/* Left: Dropzone */}
         <div className="dropzone-container">
           <div className="tool-header">
-            <div className="tiny-label" style={{ marginBottom: '16px' }}>TARGET // 04</div>
+            <div className="tiny-label">TARGET // 04</div>
             <h2 className="tool-title">
               Universal<br/>Convert.
             </h2>

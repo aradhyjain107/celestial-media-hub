@@ -18,9 +18,9 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="sidebar">
-      <div className="sidebar-header">
-        <h1>CELESTIAL //</h1>
+    <aside className="sidebar grid-line-right">
+      <div className="sidebar-header grid-line-bottom">
+        <h1>SYS.CORE//</h1>
       </div>
       
       <div className="nav-list">
@@ -30,8 +30,8 @@ export function Sidebar() {
           
           return (
             <Link key={item.path} href={item.path} style={{ textDecoration: 'none', color: 'inherit' }}>
-              <div className={`nav-item ${isActive ? 'active' : ''}`}>
-                <div className="nav-index">{num} {`//`}</div>
+              <div className={`nav-item ${isActive ? 'active' : ''} grid-line-bottom`}>
+                <div className="nav-index">{num}</div>
                 <div className="nav-name">{item.label}</div>
               </div>
             </Link>
@@ -39,9 +39,12 @@ export function Sidebar() {
         })}
       </div>
       
-      <div className="sidebar-footer">
+      <div className="sidebar-footer grid-line-top">
         <span className="tiny-label">SYS.STATUS</span>
-        <span className="status-dot" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span className="mono-data">ONLINE</span>
+          <span className="status-dot" />
+        </div>
       </div>
     </aside>
   );

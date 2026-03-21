@@ -156,7 +156,7 @@ export default function HEVCCompressor() {
         {/* Left: dropzone or batch queue */}
         <div className="dropzone-container">
           <div className="tool-header">
-            <div className="tiny-label" style={{ marginBottom: '16px' }}>TARGET // 03</div>
+            <div className="tiny-label">TARGET // 03</div>
             <h2 className="tool-title">HEVC<br/>Compress.</h2>
           </div>
 
