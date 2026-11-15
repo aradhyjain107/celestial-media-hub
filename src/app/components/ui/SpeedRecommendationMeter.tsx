@@ -489,23 +489,34 @@ export function SpeedRecommendationMeter() {
 
               <div className="space-y-3 text-xs text-[var(--text-secondary)] leading-relaxed">
                 <p className="text-[var(--text-primary)]">
-                  Running Celestial Media Hub natively unlocks your full CPU/GPU hardware encoder (Apple VideoToolbox, NVIDIA NVENC, AMD AMF) with zero upload/download delay and zero cloud file-size bottlenecks.
+                  Run Celestial Media Hub locally on macOS, Linux, or Windows to unlock your CPU/GPU hardware encoder (Apple VideoToolbox, NVIDIA NVENC, Intel QSV) with zero upload/download roundtrips or cloud queue limits.
                 </p>
                 <div className="p-3 rounded-sm bg-black border border-[var(--border-subtle)] space-y-1.5 font-mono text-[11px] text-[#E4E4E7]">
                   <div className="flex items-center gap-1.5 text-[#FF5A00] text-[10px] uppercase tracking-wider">
                     <TerminalIcon className="w-3.5 h-3.5" />
-                    Run Native Engine Locally Today
+                    Run Locally (macOS / Linux / Windows)
                   </div>
-                  <p className="select-all">git clone &lt;your-repo-url&gt; &amp;&amp; cd celestial-media-hub</p>
-                  <p className="select-all">npm install &amp;&amp; npm run dev</p>
+                  <p className="select-all">git clone https://github.com/aradhyjain107/celestial-media-hub.git</p>
+                  <p className="select-all">cd celestial-media-hub &amp;&amp; npm install &amp;&amp; npm run dev</p>
                 </div>
                 <p>
-                  When a packaged <span className="font-mono text-[var(--text-primary)]">.dmg / .exe</span> installer release is published, set{' '}
-                  <code className="font-mono text-[#FF5A00]">NEXT_PUBLIC_DESKTOP_APP_URL</code> to link the direct installer download button here automatically.
+                  Requires <span className="font-mono text-[var(--text-primary)]">Node.js 18+</span>,{' '}
+                  <span className="font-mono text-[var(--text-primary)]">ffmpeg</span>, and{' '}
+                  <span className="font-mono text-[var(--text-primary)]">yt-dlp</span> in your{' '}
+                  <code className="font-mono text-[#FF5A00]">PATH</code> (or run zero-install via{' '}
+                  <span className="font-mono text-[var(--text-primary)]">Docker</span>).
                 </p>
               </div>
 
-              <div className="flex justify-end pt-2 border-t border-[var(--border-subtle)]">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--border-subtle)]">
+                <a
+                  href="https://github.com/aradhyjain107/celestial-media-hub"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3.5 py-1.5 rounded-sm border border-[var(--border-subtle)] text-[var(--text-primary)] hover:border-white/40 font-mono text-[11px] uppercase tracking-wider transition-colors"
+                >
+                  Open GitHub Repo
+                </a>
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}

@@ -209,5 +209,7 @@ describe('SpeedRecommendationMeter component', () => {
     fireEvent.click(screen.getByRole('button', { name: /Desktop App/i }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByText(/Native Desktop App \/\/ Maximum Speed Mode/i)).toBeInTheDocument();
+    expect(screen.getByText(/https:\/\/github\.com\/aradhyjain107\/celestial-media-hub\.git/)).toBeInTheDocument();
+    expect(screen.queryByText(/<your-repo-url>/)).not.toBeInTheDocument();
   });
 });
