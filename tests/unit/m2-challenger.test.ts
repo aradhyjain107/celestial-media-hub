@@ -8,7 +8,7 @@ const SCRATCH_DIR = path.join(os.tmpdir(), 'celestial-m2-challenger-scratch');
 
 vi.mock('../../src/lib/system/env', () => ({
   env: {
-    FFMPEG_PATH: process.env.FFMPEG_PATH || '/opt/homebrew/bin/ffmpeg',
+    FFMPEG_PATH: process.env.FFMPEG_PATH || 'ffmpeg',
     YTDLP_PATH: process.env.YTDLP_PATH || 'yt-dlp',
     TEMP_DIR: path.join(os.tmpdir(), 'celestial-m2-challenger-temp'),
     JWT_SECRET: 'test-secret-that-is-at-least-32-chars-long!!',
