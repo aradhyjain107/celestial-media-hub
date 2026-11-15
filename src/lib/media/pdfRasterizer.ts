@@ -152,42 +152,61 @@ export async function convertPdfToImage(
   // Priority 2: Linux / Cross-platform pdftoppm (poppler-utils)
   try {
     const pagePrefix = path.join(outDir, prefix);
+    const useJpegIntermediate = fmt === 'jpg' || fmt === 'jpeg';
     const pdftoppmArgs = ['-r', '150'];
-    if (fmt === 'png' || fmt === 'webp' || fmt === 'avif') {
-      pdftoppmArgs.push('-png');
-    } else {
+    if (useJpegIntermediate) {
       pdftoppmArgs.push('-jpeg', '-jpegopt', `quality=${quality}`);
+    } else {
+      pdftoppmArgs.push('-png');
     }
     pdftoppmArgs.push(inputPath, pagePrefix);
 
     execFileSync('pdftoppm', pdftoppmArgs, { stdio: 'pipe' });
-    
-    const dirFiles = fs.readdirSync(outDir);
-    const pageFiles = dirFiles
-      .filter(f => f.startsWith(prefix) && (f.endsWith('.png') || f.endsWith('.jpg') || f.endsWith('.jpeg')))
-      .map(f => path.join(outDir, f));
 
-    if (pageFiles.length > 0) {
-      if (fmt === 'webp' || fmt === 'avif') {
-        const finalPages: string[] = [];
-        for (const pg of pageFiles) {
-          const pgParsed = path.parse(pg);
-          const targetPg = path.join(outDir, `${pgParsed.name}.${fmt}`);
+    const dirFiles = fs.readdirSync(outDir);
+    const matchedPages: { pageNum: number; filePath: string }[] = [];
+    for (const file of dirFiles) {
+      if (!file.startsWith(`${prefix}-`)) continue;
+      const suffix = file.slice(prefix.length + 1);
+      const dotIdx = suffix.lastIndexOf('.');
+      if (dotIdx <= 0) continue;
+      const numPart = suffix.slice(0, dotIdx);
+      const extPart = suffix.slice(dotIdx + 1).toLowerCase();
+      if (!/^\d+$/.test(numPart)) continue;
+      if (extPart !== 'png' && extPart !== 'jpg' && extPart !== 'jpeg') continue;
+      matchedPages.push({ pageNum: parseInt(numPart, 10), filePath: path.join(outDir, file) });
+    }
+    matchedPages.sort((a, b) => a.pageNum - b.pageNum);
+
+    if (matchedPages.length > 0) {
+      const targetExt = parsed.ext ? parsed.ext.slice(1) : fmt;
+      const needsTranscode = !useJpegIntermediate && fmt !== 'png';
+      const finalPages: string[] = [];
+
+      for (let i = 0; i < matchedPages.length; i++) {
+        // eslint-disable-next-line security/detect-object-injection
+        const srcFile = matchedPages[i].filePath;
+        const targetPg = matchedPages.length === 1
+          ? outputBasePath
+          : path.join(outDir, `${prefix}_page_${i + 1}.${targetExt}`);
+
+        if (needsTranscode) {
           if (fmt === 'webp') {
             try {
-              execFileSync('cwebp', ['-q', String(quality), pg, '-o', targetPg], { stdio: 'pipe' });
+              execFileSync('cwebp', ['-q', String(quality), srcFile, '-o', targetPg], { stdio: 'pipe' });
             } catch {
-              execFileSync(ffmpegBin, ['-y', '-i', pg, targetPg], { stdio: 'pipe' });
+              execFileSync(ffmpegBin, ['-y', '-i', srcFile, targetPg], { stdio: 'pipe' });
             }
           } else {
-            execFileSync(ffmpegBin, ['-y', '-i', pg, targetPg], { stdio: 'pipe' });
+            execFileSync(ffmpegBin, ['-y', '-i', srcFile, targetPg], { stdio: 'pipe' });
           }
-          try { fs.unlinkSync(pg); } catch {}
-          finalPages.push(targetPg);
+          try { fs.unlinkSync(srcFile); } catch {}
+        } else if (srcFile !== targetPg) {
+          fs.renameSync(srcFile, targetPg);
         }
-        return finalPages;
+        finalPages.push(targetPg);
       }
-      return pageFiles;
+      return finalPages;
     }
   } catch (pdftoppmErr) {}
 

@@ -400,7 +400,10 @@ export async function probeMediaStreams(inputPath: string): Promise<MediaStreamI
   });
 }
 
-export async function isEncoderAvailable(encoderName: string): Promise<boolean> {
+const HW_ENCODER_RE = /_(nvenc|vaapi|qsv|amf|videotoolbox)$/i;
+const encoderProbeCache = new Map<string, boolean>();
+
+function hasCompiledEncoder(encoderName: string): Promise<boolean> {
   return new Promise((resolve) => {
     const ffmpeg = cp.spawn(env.FFMPEG_PATH, ['-encoders']);
     let output = '';
@@ -415,6 +418,56 @@ export async function isEncoderAvailable(encoderName: string): Promise<boolean> 
 
     ffmpeg.on('error', () => resolve(false));
   });
+}
+
+function canInitializeHardwareEncoder(encoderName: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    // 1-frame null-sink dry run verifies GPU driver/device availability (e.g. avoids false positives for nvenc on CPU-only Linux)
+    const ffmpeg = cp.spawn(env.FFMPEG_PATH, [
+      '-v', 'error',
+      '-f', 'lavfi',
+      '-i', 'color=c=black:s=128x128:d=0.1',
+      '-pix_fmt', 'yuv420p',
+      '-frames:v', '1',
+      '-c:v', encoderName,
+      '-f', 'null',
+      '-',
+    ]);
+
+    const timer = setTimeout(() => {
+      try { ffmpeg.kill('SIGKILL'); } catch {}
+      resolve(false);
+    }, 5000);
+
+    ffmpeg.on('close', code => {
+      clearTimeout(timer);
+      resolve(code === 0);
+    });
+
+    ffmpeg.on('error', () => {
+      clearTimeout(timer);
+      resolve(false);
+    });
+  });
+}
+
+export async function isEncoderAvailable(encoderName: string): Promise<boolean> {
+  const cacheKey = `${env.FFMPEG_PATH}:${encoderName}`;
+  const cached = encoderProbeCache.get(cacheKey);
+  if (cached !== undefined) return cached;
+
+  const compiled = await hasCompiledEncoder(encoderName);
+  if (!compiled) {
+    encoderProbeCache.set(cacheKey, false);
+    return false;
+  }
+
+  const available = HW_ENCODER_RE.test(encoderName)
+    ? await canInitializeHardwareEncoder(encoderName)
+    : true;
+
+  encoderProbeCache.set(cacheKey, available);
+  return available;
 }
 
 export async function getMediaDuration(inputPath: string): Promise<number> {
