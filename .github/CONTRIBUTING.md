@@ -12,7 +12,12 @@ Thank you for helping improve Celestial Media Hub! This project is open source u
 2. Install system binaries (`ffmpeg`, `ffprobe`, `yt-dlp`) and ensure they are available in your `PATH`.
 3. Copy `.env.example` to `.env.local`:
    ```bash
+   # macOS / Linux
    cp .env.example .env.local
+   ```
+   ```powershell
+   # Windows (PowerShell)
+   Copy-Item .env.example .env.local
    ```
 4. Install Node dependencies and start the dev server:
    ```bash
@@ -22,13 +27,21 @@ Thank you for helping improve Celestial Media Hub! This project is open source u
 
 ## Checks Before Opening a Pull Request
 
-Please verify all checks pass locally:
+Please verify all checks pass locally (see [`.github/workflows/ci.yml`](./workflows/ci.yml) for the Ubuntu full-suite job and the Windows build + runtime portability job):
 
 ```bash
+# macOS / Linux
 npx tsc --noEmit
 npm run lint
 npm test
 JWT_SECRET="build-check-secret-min-32-characters-ok" npm run build
+```
+```powershell
+# Windows (PowerShell)
+npx tsc --noEmit
+npm run lint
+$env:JWT_SECRET = "build-check-secret-min-32-characters-ok"
+npm run build
 ```
 
 ## Security & Privacy Guidelines

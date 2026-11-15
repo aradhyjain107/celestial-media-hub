@@ -43,7 +43,7 @@ tests/
 - Typecheck: `npx tsc --noEmit` *(run `npm run build` first if `.next/types` has not been generated yet)*
 - Lint: `npm run lint`
 - Unit + Security + E2E suite: `npm test` (Vitest) or `npx vitest run tests/security`
-- Production build: `JWT_SECRET="build-time-only-jwt-secret-min-32-chars-ok" npm run build`
+- Production build: `JWT_SECRET="build-time-only-jwt-secret-min-32-chars-ok" npm run build` (PowerShell: `$env:JWT_SECRET="build-time-only-jwt-secret-min-32-chars-ok"; npm run build`)
 - Docker container: `docker build -t celestial-media-hub . && docker run -p 7860:7860 celestial-media-hub`
 
 ## Environment Variables (`.env.example`)

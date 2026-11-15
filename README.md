@@ -42,7 +42,7 @@ pinned: false
    - Selective multi-track isolation and replacement audio track injection.
 
 4. **HEVC & Universal Compressor (`/tools/hevc`)**
-   - Multi-codec (HEVC/H.265, H.264, AV1, VP9) CRF compression with dynamic hardware acceleration detection (Apple VideoToolbox `hevc_videotoolbox`, NVIDIA NVENC, Intel QSV).
+   - Multi-codec (HEVC/H.265, H.264, AV1, VP9) CRF compression with runtime hardware acceleration probing (Apple VideoToolbox `hevc_videotoolbox`, NVIDIA NVENC, Intel QSV) and automatic fallback to software encoding (`libx265` / `libx264`) when no compatible GPU driver is present.
    - Real-time file size savings estimation and device profile calibrations.
 
 5. **YouTube Downloader (`/tools/youtube`)**
@@ -124,15 +124,28 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 Build for production:
 ```bash
+# macOS / Linux (bash / zsh)
 JWT_SECRET="$(openssl rand -base64 32)" npm run build
+npm run start
+```
+```powershell
+# Windows (PowerShell)
+$env:JWT_SECRET = -join ((48..57)+(65..90)+(97..122) | Get-Random -Count 32 | ForEach-Object {[char]$_})
+npm run build
 npm run start
 ```
 
 ### Option B: Run Anywhere with Docker (Zero Local Dependencies)
 
 ```bash
+# macOS / Linux
 docker build -t celestial-media-hub .
 docker run --rm -p 7860:7860 -e JWT_SECRET="$(openssl rand -base64 32)" celestial-media-hub
+```
+```powershell
+# Windows (PowerShell)
+docker build -t celestial-media-hub .
+docker run --rm -p 7860:7860 -e JWT_SECRET="replace-with-32-char-or-longer-random-secret" celestial-media-hub
 ```
 
 Open [http://localhost:7860](http://localhost:7860) in your browser.
@@ -169,14 +182,14 @@ Celestial Media Hub is hardened in compliance with the **Invicti Vibe Coding Sec
 │   ├── CONTRIBUTING.md
 │   └── SECURITY.md
 ├── public/           # Static assets, UPI QR, & Web Worker silicon probe
-├── scripts/          # Docker entrypoint & optional macOS PDF rasterizer helper
+├── scripts/          # Cross-platform Next launcher (run-next.mjs), Docker entrypoint, & macOS PDF helper
 ├── src/
 │   ├── app/          # Next.js App Router pages, UI components, & API routes
 │   ├── lib/
 │   │   ├── media/    # FFmpeg, yt-dlp, remux planner, PDF rasterizer, & mux engine
 │   │   ├── security/ # JWT auth, BOLA ownership, rate limiting, error sanitization, SSRF
 │   │   ├── system/   # Env validation, temp workspaces, & hardware/silicon profilers
-│   │   └── utils/    # Filename helpers, QR encoder, & UI cursor hook
+│   │   └── utils/    # Pure-Node ZIP archiver (archive.ts), filename helpers, QR encoder, & UI cursor hook
 │   ├── schemas/      # Zod validation schemas per endpoint
 │   └── middleware.ts # Edge CORS, Fetch Metadata, rate limit, & auth guard
 ├── tests/            # Unit, security, E2E, visual, & stress test suites
