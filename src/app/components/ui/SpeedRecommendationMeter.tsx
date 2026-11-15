@@ -5,6 +5,8 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useHardwareProfile } from '../../context/GlobalJobContext';
 import {
   ClientHardwareSnapshot,
+  formatCloudCoresLabel,
+  formatCloudMemoryLabel,
   inspectBrowserHardware,
   recommendExecutionMode,
   runBrowserComputeBenchmark,
@@ -224,14 +226,18 @@ export function SpeedRecommendationMeter() {
 
   const desktopAppUrl = getSafeDesktopAppUrl();
 
+  const cloudMemText = formatCloudMemoryLabel(recommendation.cloudSpecs.memoryGB);
+  const cloudCoreText = formatCloudCoresLabel(recommendation.cloudSpecs.cores);
+  const isConstrainedCloud =
+    recommendation.cloudSpecs.memoryGB <= 1 || recommendation.cloudSpecs.cores < 1;
+
   const verdictBadge = useMemo(() => {
     if (recommendation.target === 'PRIVACY_MASKED') {
       return {
         label: 'SPECS SHIELDED',
         dotClass: 'bg-[#C084FC]',
         accentClass: 'text-[#C084FC] border-[#C084FC]/40 bg-[#C084FC]/10',
-        compactSummary:
-          'Cloud site uses shared 2-vCPU servers — expand Details to verify your PC vs. the Desktop App.',
+        compactSummary: `Cloud site runs on shared ${cloudCoreText} vCPU / ${cloudMemText} — expand Details to compare your PC vs. the Desktop App.`,
       };
     }
     if (recommendation.target === 'WEBSITE') {
@@ -239,7 +245,7 @@ export function SpeedRecommendationMeter() {
         label: 'USE WEBSITE',
         dotClass: 'bg-[#38BDF8]',
         accentClass: 'text-[#38BDF8] border-[#38BDF8]/40 bg-[#38BDF8]/10',
-        compactSummary: `Shared ${recommendation.cloudSpecs.memoryGB} GB cloud site runs safer & smoother than your low-spec PC.`,
+        compactSummary: `Shared ${cloudMemText} cloud site runs safer & smoother than your low-spec PC.`,
       };
     }
     if (recommendation.target === 'BALANCED') {
@@ -247,18 +253,20 @@ export function SpeedRecommendationMeter() {
         label: 'BALANCED FIT',
         dotClass: 'bg-[#F59E0B]',
         accentClass: 'text-[#F59E0B] border-[#F59E0B]/40 bg-[#F59E0B]/10',
-        compactSummary:
-          'Free cloud site works for quick clips; Desktop App avoids uploads for large 4K video.',
+        compactSummary: isConstrainedCloud
+          ? `Shared ${cloudMemText} Render container works for quick clips; use Desktop App to skip upload & spin-down delays.`
+          : 'Free cloud site works for quick clips; Desktop App avoids uploads for large 4K video.',
       };
     }
     return {
       label: 'USE DESKTOP APP',
       dotClass: 'bg-[#FF5A00]',
       accentClass: 'text-[#FF5A00] border-[#FF5A00]/45 bg-[#FF5A00]/12',
-      compactSummary:
-        'Cloud site runs on shared 2-vCPU servers (not fastest) — your device runs much faster natively.',
+      compactSummary: isConstrainedCloud
+        ? `Render free cloud runs on ${cloudCoreText} vCPU / ${cloudMemText} RAM — your device runs vastly faster natively.`
+        : `Cloud site runs on shared ${cloudCoreText}-vCPU servers (not fastest) — your device runs much faster natively.`,
     };
-  }, [recommendation.target, recommendation.cloudSpecs.memoryGB]);
+  }, [recommendation.target, cloudCoreText, cloudMemText, isConstrainedCloud]);
 
   const ramLabel = activeClient.memoryGB !== null
     ? `${activeClient.memoryGB} GB${activeClient.memoryGB === 8 ? '+' : ''}`
@@ -440,10 +448,12 @@ export function SpeedRecommendationMeter() {
                         {recommendation.cloudSpecs.label}
                       </div>
                       <div className="text-[var(--text-primary)]">
-                        {recommendation.cloudSpecs.cores} vCPU · {recommendation.cloudSpecs.memoryGB} GB RAM
+                        {cloudCoreText} vCPU · {cloudMemText} RAM
                       </div>
                       <div className="text-[10px] text-[var(--text-secondary)]">
-                        Free shared container · Requires upload/download roundtrip
+                        {isConstrainedCloud
+                          ? 'Render Free Tier (shared container) · Idle spin-down · Upload roundtrip'
+                          : 'Free shared container · Requires upload/download roundtrip'}
                       </div>
                     </div>
                   </div>

@@ -9,6 +9,7 @@
  */
 
 import os from "node:os";
+import fs from "node:fs";
 import { execSync } from "node:child_process";
 import { isEncoderAvailable } from "../media/ffmpeg";
 
@@ -53,24 +54,127 @@ let cachedProfile: DeviceHardwareProfile | null = null;
 let lastProfileTime = 0;
 const CACHE_TTL_MS = 30_000; // Cache hardware specs for 30s (free memory refreshed)
 
+export interface LinuxContainerQuota {
+  memoryLimitBytes: number | null;
+  memoryUsageBytes: number | null;
+  cpuCores: number | null;
+}
+
+function safeReadLiteral(reader: () => string): string | null {
+  try {
+    return reader().trim();
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Inspects host OS directly and calculates device-specific precision limits.
+ * Parses Linux cgroup v2/v1 CPU and memory limits so containers (e.g. Render Free 512 MB / 0.1 vCPU)
+ * report their actual allocated quota rather than the underlying EC2/VM host specs.
+ */
+export function parseCgroupLimits(files: {
+  memMaxV2?: string | null;
+  memCurV2?: string | null;
+  memMaxV1?: string | null;
+  memCurV1?: string | null;
+  cpuMaxV2?: string | null;
+  cpuQuotaV1?: string | null;
+  cpuPeriodV1?: string | null;
+}, hostMemoryBytes: number, hostCores: number): LinuxContainerQuota {
+  let memoryLimitBytes: number | null = null;
+  let memoryUsageBytes: number | null = null;
+  let cpuCores: number | null = null;
+
+  const parseMemValue = (raw: string | null | undefined): number | null => {
+    if (!raw || raw === "max") return null;
+    const val = Number.parseInt(raw, 10);
+    if (!Number.isFinite(val) || val <= 0) return null;
+    // Ignore cgroup v1 unlimited sentinel (near 2^63) or limits >= physical host RAM
+    if (val >= hostMemoryBytes || val >= 1e15) return null;
+    return val;
+  };
+
+  memoryLimitBytes =
+    parseMemValue(files.memMaxV2) ?? parseMemValue(files.memMaxV1);
+
+  const rawUsage = files.memCurV2 ?? files.memCurV1;
+  if (rawUsage) {
+    const usage = Number.parseInt(rawUsage, 10);
+    if (Number.isFinite(usage) && usage >= 0) {
+      memoryUsageBytes = usage;
+    }
+  }
+
+  if (files.cpuMaxV2) {
+    const [quotaStr, periodStr] = files.cpuMaxV2.split(/\s+/);
+    if (quotaStr && periodStr && quotaStr !== "max") {
+      const quota = Number.parseInt(quotaStr, 10);
+      const period = Number.parseInt(periodStr, 10);
+      if (Number.isFinite(quota) && Number.isFinite(period) && quota > 0 && period > 0) {
+        cpuCores = Math.min(hostCores, Math.max(0.1, Number((quota / period).toFixed(2))));
+      }
+    }
+  }
+  if (cpuCores === null && files.cpuQuotaV1 && files.cpuPeriodV1) {
+    const quota = Number.parseInt(files.cpuQuotaV1, 10);
+    const period = Number.parseInt(files.cpuPeriodV1, 10);
+    if (Number.isFinite(quota) && Number.isFinite(period) && quota > 0 && period > 0) {
+      cpuCores = Math.min(hostCores, Math.max(0.1, Number((quota / period).toFixed(2))));
+    }
+  }
+
+  return { memoryLimitBytes, memoryUsageBytes, cpuCores };
+}
+
+function readLinuxCgroupLimits(hostMemoryBytes: number, hostCores: number): LinuxContainerQuota {
+  if (os.platform() !== "linux") {
+    return { memoryLimitBytes: null, memoryUsageBytes: null, cpuCores: null };
+  }
+  return parseCgroupLimits(
+    {
+      memMaxV2: safeReadLiteral(() => fs.readFileSync("/sys/fs/cgroup/memory.max", "utf8")),
+      memCurV2: safeReadLiteral(() => fs.readFileSync("/sys/fs/cgroup/memory.current", "utf8")),
+      memMaxV1: safeReadLiteral(() => fs.readFileSync("/sys/fs/cgroup/memory/memory.limit_in_bytes", "utf8")),
+      memCurV1: safeReadLiteral(() => fs.readFileSync("/sys/fs/cgroup/memory/memory.usage_in_bytes", "utf8")),
+      cpuMaxV2: safeReadLiteral(() => fs.readFileSync("/sys/fs/cgroup/cpu.max", "utf8")),
+      cpuQuotaV1: safeReadLiteral(() => fs.readFileSync("/sys/fs/cgroup/cpu/cpu.cfs_quota_us", "utf8")),
+      cpuPeriodV1: safeReadLiteral(() => fs.readFileSync("/sys/fs/cgroup/cpu/cpu.cfs_period_us", "utf8")),
+    },
+    hostMemoryBytes,
+    hostCores
+  );
+}
+
+/**
+ * Inspects host OS (and Linux container cgroup limits) directly and calculates device-specific precision limits.
  */
 export async function getServerHardwareProfile(): Promise<DeviceHardwareProfile> {
   const now = Date.now();
+  const hostMemoryBytes = os.totalmem();
+  const cpus = os.cpus() || [];
+  const hostCores = Math.max(1, cpus.length);
+  const cgroup = readLinuxCgroupLimits(hostMemoryBytes, hostCores);
+
   if (cachedProfile && now - lastProfileTime < CACHE_TTL_MS) {
     // Refresh real-time free memory
-    cachedProfile.freeMemoryGB = Math.round((os.freemem() / (1024 * 1024 * 1024)) * 10) / 10;
+    const freeBytes = cgroup.memoryLimitBytes && cgroup.memoryUsageBytes !== null
+      ? Math.max(0, cgroup.memoryLimitBytes - cgroup.memoryUsageBytes)
+      : os.freemem();
+    cachedProfile.freeMemoryGB = Math.round((freeBytes / (1024 * 1024 * 1024)) * 10) / 10;
     return cachedProfile;
   }
 
-  const cpus = os.cpus() || [];
-  const totalCores = Math.max(1, cpus.length);
-  const totalMemoryBytes = os.totalmem();
+  const totalCores = cgroup.cpuCores ?? hostCores;
+  const totalMemoryBytes = cgroup.memoryLimitBytes ?? hostMemoryBytes;
+  const freeBytes = cgroup.memoryLimitBytes && cgroup.memoryUsageBytes !== null
+    ? Math.max(0, cgroup.memoryLimitBytes - cgroup.memoryUsageBytes)
+    : os.freemem();
+
   const totalMemoryGB = Math.round((totalMemoryBytes / (1024 * 1024 * 1024)) * 10) / 10;
-  const freeMemoryGB = Math.round((os.freemem() / (1024 * 1024 * 1024)) * 10) / 10;
+  const freeMemoryGB = Math.round((freeBytes / (1024 * 1024 * 1024)) * 10) / 10;
   const architecture = os.arch();
   const platform = os.platform();
+  const isRender = process.env.RENDER === "true";
 
   let cpuModel = cpus[0]?.model || "Generic Processor";
   let performanceCores: number | undefined;
@@ -122,7 +226,9 @@ export async function getServerHardwareProfile(): Promise<DeviceHardwareProfile>
     tierLabel = "HIGH-PERFORMANCE PRO";
   } else if (totalMemoryGB <= 4 || totalCores <= 2) {
     tier = "TIER_4_ENTRY";
-    tierLabel = "ENERGY SAVER / ENTRY";
+    tierLabel = totalMemoryGB <= 1
+      ? (isRender ? "RENDER FREE CONTAINER (512MB)" : "CONSTRAINED CONTAINER (512MB)")
+      : "ENERGY SAVER / ENTRY";
   } else {
     tier = "TIER_3_BALANCED";
     tierLabel = "STANDARD BALANCED";
@@ -144,27 +250,39 @@ export async function getServerHardwareProfile(): Promise<DeviceHardwareProfile>
     videoRemux = Math.min(1500, Math.floor(totalMemoryGB * 20));     // e.g. 32GB -> 640, 64GB -> 1280
     videoEncode = Math.min(500, Math.floor(totalMemoryGB * 8));      // e.g. 32GB -> 256, 64GB -> 500
     maxFileSizeMB = 50000; // 50 GB
-    maxParallelPhoto = Math.min(16, totalCores);
-    maxParallelAudio = Math.min(8, Math.floor(totalCores / 2));
-    maxParallelVideo = hasHwAccel ? Math.min(4, Math.floor(totalCores / 3)) : 2;
+    maxParallelPhoto = Math.min(16, Math.floor(totalCores));
+    maxParallelAudio = Math.min(8, Math.max(1, Math.floor(totalCores / 2)));
+    maxParallelVideo = hasHwAccel ? Math.min(4, Math.max(1, Math.floor(totalCores / 3))) : 2;
   } else if (tier === "TIER_2_PRO") {
     photoBatch = Math.min(5000, Math.max(1000, Math.floor(totalMemoryGB * 150))); // e.g. 16GB -> 2400
     audioBatch = Math.min(2000, Math.max(500, Math.floor(totalMemoryGB * 60)));   // e.g. 16GB -> 960
     videoRemux = Math.min(600, Math.max(200, Math.floor(totalMemoryGB * 20)));    // e.g. 16GB -> 320
     videoEncode = Math.min(250, Math.max(100, Math.floor(totalMemoryGB * 8)));    // e.g. 16GB -> 128
     maxFileSizeMB = 25000; // 25 GB
-    maxParallelPhoto = Math.min(8, totalCores);
-    maxParallelAudio = Math.min(4, Math.floor(totalCores / 2));
+    maxParallelPhoto = Math.min(8, Math.floor(totalCores));
+    maxParallelAudio = Math.min(4, Math.max(1, Math.floor(totalCores / 2)));
     maxParallelVideo = hasHwAccel ? 2 : 1;
   } else if (tier === "TIER_4_ENTRY") {
-    photoBatch = 200;
-    audioBatch = 100;
-    videoRemux = 50;
-    videoEncode = 20;
-    maxFileSizeMB = 3000;
-    maxParallelPhoto = 2;
-    maxParallelAudio = 1;
-    maxParallelVideo = 1;
+    if (totalMemoryGB <= 1 || totalCores < 1) {
+      // Constrained free-tier container (e.g. Render 512 MB / 0.1 vCPU)
+      photoBatch = 100;
+      audioBatch = 40;
+      videoRemux = 15;
+      videoEncode = 5;
+      maxFileSizeMB = 250;
+      maxParallelPhoto = 1;
+      maxParallelAudio = 1;
+      maxParallelVideo = 1;
+    } else {
+      photoBatch = 200;
+      audioBatch = 100;
+      videoRemux = 50;
+      videoEncode = 20;
+      maxFileSizeMB = 3000;
+      maxParallelPhoto = 2;
+      maxParallelAudio = 1;
+      maxParallelVideo = 1;
+    }
   } else {
     // TIER_3_BALANCED (e.g. 8GB RAM, 4-8 cores)
     photoBatch = 1000;
@@ -172,14 +290,16 @@ export async function getServerHardwareProfile(): Promise<DeviceHardwareProfile>
     videoRemux = 150;
     videoEncode = 50;
     maxFileSizeMB = 10000; // 10 GB
-    maxParallelPhoto = Math.min(4, totalCores);
+    maxParallelPhoto = Math.min(4, Math.max(1, Math.floor(totalCores)));
     maxParallelAudio = 2;
     maxParallelVideo = 1;
   }
 
   const optimalFfmpegThreads = performanceCores
     ? Math.max(2, performanceCores)
-    : Math.min(8, Math.max(2, Math.floor(totalCores * 0.75)));
+    : totalCores < 2
+      ? 1
+      : Math.min(8, Math.max(2, Math.floor(totalCores * 0.75)));
 
   cachedProfile = {
     cpuModel,

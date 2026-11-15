@@ -218,11 +218,25 @@ export interface ExecutionRecommendation {
   clientSpecs: ClientHardwareSnapshot;
 }
 
-const HF_CLOUD_BASELINE = {
-  label: "HF FREE CLOUD",
-  cores: 2,
-  memoryGB: 16,
+export const RENDER_CLOUD_BASELINE = {
+  label: "RENDER FREE CLOUD",
+  cores: 0.1,
+  memoryGB: 0.5,
 };
+
+export function formatCloudMemoryLabel(memoryGB: number): string {
+  if (memoryGB < 1) {
+    return `${Math.round(memoryGB * 1024)} MB`;
+  }
+  return `${memoryGB} GB`;
+}
+
+export function formatCloudCoresLabel(cores: number): string {
+  if (cores < 1) {
+    return cores.toFixed(1);
+  }
+  return String(cores);
+}
 
 const ACCELERATED_GPU_REGEX = /(apple|m1|m2|m3|m4|nvidia|geforce|rtx|gtx|quadro|radeon rx|radeon pro|arc a\d)/i;
 const MASKED_GPU_REGEX = /^(brave|webkit webgl|mozilla|firefox)$/i;
@@ -462,7 +476,7 @@ export async function runBrowserComputeBenchmark(options?: {
 
 /**
  * Compares the visitor's browser hardware (plus optional silicon probe) against the active cloud
- * engine (or Hugging Face Free Cloud baseline during local dev) and returns a 0-100 score.
+ * engine (or Render Free Cloud baseline during local dev) and returns a 0-100 score.
  */
 export function recommendExecutionMode(
   client: ClientHardwareSnapshot,
@@ -475,12 +489,18 @@ export function recommendExecutionMode(
   );
 
   const cloudSpecs = !server || isLocalhost
-    ? HF_CLOUD_BASELINE
+    ? RENDER_CLOUD_BASELINE
     : {
-        label: "LIVE CLOUD ENGINE",
-        cores: Math.max(1, server.cores || HF_CLOUD_BASELINE.cores),
-        memoryGB: Math.max(1, server.memoryGB || HF_CLOUD_BASELINE.memoryGB),
+        label: server.memoryGB <= 1 || server.cores < 1
+          ? "RENDER FREE CLOUD"
+          : "LIVE CLOUD ENGINE",
+        cores: server.cores > 0 ? server.cores : RENDER_CLOUD_BASELINE.cores,
+        memoryGB: server.memoryGB > 0 ? server.memoryGB : RENDER_CLOUD_BASELINE.memoryGB,
       };
+
+  const isConstrainedCloud = cloudSpecs.memoryGB <= 1 || cloudSpecs.cores < 1;
+  const cloudMemText = formatCloudMemoryLabel(cloudSpecs.memoryGB);
+  const cloudCoreText = formatCloudCoresLabel(cloudSpecs.cores);
 
   // When live silicon probe results exist, score directly from measured multi-core + single-core
   // compute throughput so privacy-browser metadata spoofing cannot misclassify an M2/RTX workstation.
@@ -512,8 +532,14 @@ export function recommendExecutionMode(
       benchScore += 5;
     }
 
-    // Only apply low-RAM penalty when memoryGB isn't privacy-spoofed
-    if (!client.isPrivacyMasked && client.memoryGB !== null && client.memoryGB <= 4 && !client.hasDiscreteOrAppleGpu) {
+    if (isConstrainedCloud) {
+      // Render Free (0.1 vCPU / 512 MB) is throttled & RAM-capped; almost any PC >= 110 M ops/s beats it.
+      if (multiCoreMops >= 110) {
+        benchScore += 36;
+      } else {
+        benchScore += 18;
+      }
+    } else if (!client.isPrivacyMasked && client.memoryGB !== null && client.memoryGB <= 4 && !client.hasDiscreteOrAppleGpu) {
       benchScore -= 14;
     }
 
@@ -524,7 +550,7 @@ export function recommendExecutionMode(
         target: "WEBSITE",
         score,
         headline: "USE THE WEBSITE (CLOUD RECOMMENDED)",
-        rationale: `Live silicon probe measured ${multiCoreMops} M ops/s multi-core (${singleCoreMops} M ops/s single, ${parallelSpeedup}x scaling). Our ${cloudSpecs.memoryGB} GB cloud container avoids choking low-power/low-RAM hardware.`,
+        rationale: `Live silicon probe measured ${multiCoreMops} M ops/s multi-core (${singleCoreMops} M ops/s single, ${parallelSpeedup}x scaling). Our ${cloudMemText} cloud container avoids choking ultra-light hardware.`,
         cloudSpecs,
         clientSpecs: client,
       };
@@ -535,7 +561,7 @@ export function recommendExecutionMode(
         target: "BALANCED",
         score,
         headline: "EITHER WORKS — APP RECOMMENDED FOR LARGE VIDEO",
-        rationale: `Live silicon probe measured ${multiCoreMops} M ops/s multi-core (${parallelSpeedup}x scaling). Great for quick jobs on the site; use the Desktop App for multi-gigabyte video.`,
+        rationale: `Live silicon probe measured ${multiCoreMops} M ops/s multi-core (${parallelSpeedup}x scaling). Fine for short clips on the ${cloudMemText} web host; use the Desktop App for multi-gigabyte video.`,
         cloudSpecs,
         clientSpecs: client,
       };
@@ -545,7 +571,7 @@ export function recommendExecutionMode(
       target: "DESKTOP_APP",
       score,
       headline: "USE THE NATIVE DESKTOP APP (FASTEST)",
-      rationale: `Live silicon probe measured ${multiCoreMops} M ops/s parallel throughput (${singleCoreMops} M ops/s single-core, ${parallelSpeedup}x scaling${client.isPrivacyMasked ? ", bypassing browser privacy spoofing" : ""}). Running natively will crush the shared ${cloudSpecs.cores}-vCPU cloud container.`,
+      rationale: `Live silicon probe measured ${multiCoreMops} M ops/s parallel throughput (${singleCoreMops} M ops/s single-core, ${parallelSpeedup}x scaling${client.isPrivacyMasked ? ", bypassing browser privacy spoofing" : ""}). Running natively will crush the shared ${cloudCoreText}-vCPU / ${cloudMemText} cloud container.`,
       cloudSpecs,
       clientSpecs: client,
     };
@@ -556,51 +582,76 @@ export function recommendExecutionMode(
       target: "PRIVACY_MASKED",
       score: 50,
       headline: "BROWSER SHIELDS ARE HIDING YOUR REAL HARDWARE SPECS",
-      rationale: `${client.maskReason || "Your browser is masking hardware telemetry"} (reporting spoofed ${client.cores} threads${client.memoryGB ? `, ${client.memoryGB} GB` : ""}${client.gpuRenderer ? `, GPU: ${client.gpuRenderer}` : ""}). Select your actual PC tier on the right to see whether the Website or Desktop App is faster for you.`,
+      rationale: `${client.maskReason || "Your browser is masking hardware telemetry"} (reporting spoofed ${client.cores} threads${client.memoryGB ? `, ${client.memoryGB} GB` : ""}${client.gpuRenderer ? `, GPU: ${client.gpuRenderer}` : ""}). Select your actual PC tier on the right to compare against the shared ${cloudCoreText} vCPU / ${cloudMemText} cloud server.`,
       cloudSpecs,
       clientSpecs: client,
     };
   }
 
-  // Start neutral; scale by CPU threads, browser RAM (accounting for Chrome's 8 GB cap), and GPU class.
-  let score = 34;
-
-  // CPU thread advantage relative to 2-vCPU cloud baseline
-  if (client.cores >= 12) {
-    score += 34;
-  } else if (client.cores >= 8) {
-    score += 28;
-  } else if (client.cores >= 6) {
-    score += 18;
-  } else if (client.cores >= 4) {
-    score += 6;
-  } else {
-    score -= 16;
-  }
-
-  // RAM capacity & swap risk vs 16 GB cloud container
-  if (client.memoryGB !== null) {
-    if (client.memoryGB <= 2) {
-      score -= 22;
-    } else if (client.memoryGB <= 4) {
-      score -= client.hasDiscreteOrAppleGpu ? 4 : 15;
-    } else if (client.memoryGB >= 8) {
-      // Chrome caps navigator.deviceMemory at 8 GB even on 16-64 GB workstations.
-      score += client.cores >= 6 || client.hasDiscreteOrAppleGpu ? 16 : 8;
+  let score: number;
+  if (isConstrainedCloud) {
+    // Against Render Free (0.1 vCPU / 512 MB RAM), virtually every desktop/laptop outclasses the container.
+    score = 68;
+    if (client.cores >= 12) {
+      score += 20;
+    } else if (client.cores >= 8) {
+      score += 16;
+    } else if (client.cores >= 6) {
+      score += 12;
+    } else if (client.cores >= 4) {
+      score += 6;
+    } else {
+      score -= 10;
     }
-  } else if (client.hasDiscreteOrAppleGpu) {
-    // Safari omits deviceMemory; compensate when hardware acceleration is detected.
-    score += 10;
-  }
 
-  // Hardware encoder / unified memory boost (Apple VideoToolbox, NVIDIA NVENC, AMD AMF/VCE, Intel Arc)
-  if (client.hasDiscreteOrAppleGpu) {
-    score += 22;
-  }
+    if (client.memoryGB !== null) {
+      if (client.memoryGB <= 2) {
+        score -= 16;
+      } else if (client.memoryGB <= 4) {
+        score += 4;
+      } else if (client.memoryGB >= 8) {
+        score += 10;
+      }
+    }
 
-  // Adjust slightly if the hosted server itself is unusually beefy (> 4 vCPU) vs standard 2 vCPU Space.
-  if (cloudSpecs.cores >= 8 && !client.hasDiscreteOrAppleGpu && client.cores <= 8) {
-    score -= 12;
+    if (client.hasDiscreteOrAppleGpu) {
+      score += 8;
+    }
+  } else {
+    // Against a larger cloud node (e.g., 2+ vCPU / 8-16+ GB RAM), compare host resources fairly.
+    score = 34;
+
+    if (client.cores >= 12) {
+      score += 34;
+    } else if (client.cores >= 8) {
+      score += 28;
+    } else if (client.cores >= 6) {
+      score += 18;
+    } else if (client.cores >= 4) {
+      score += 6;
+    } else {
+      score -= 16;
+    }
+
+    if (client.memoryGB !== null) {
+      if (client.memoryGB <= 2) {
+        score -= 22;
+      } else if (client.memoryGB <= 4) {
+        score -= client.hasDiscreteOrAppleGpu ? 4 : 15;
+      } else if (client.memoryGB >= 8) {
+        score += client.cores >= 6 || client.hasDiscreteOrAppleGpu ? 16 : 8;
+      }
+    } else if (client.hasDiscreteOrAppleGpu) {
+      score += 10;
+    }
+
+    if (client.hasDiscreteOrAppleGpu) {
+      score += 22;
+    }
+
+    if (cloudSpecs.cores >= 8 && !client.hasDiscreteOrAppleGpu && client.cores <= 8) {
+      score -= 12;
+    }
   }
 
   score = Math.max(5, Math.min(98, Math.round(score)));
@@ -610,7 +661,7 @@ export function recommendExecutionMode(
       target: "WEBSITE",
       score,
       headline: "USE THE WEBSITE (CLOUD RECOMMENDED)",
-      rationale: `Your device (${client.cores} threads${client.memoryGB ? `, ${client.memoryGB} GB reported RAM` : ""}) can bog down or swap during heavy FFmpeg encodes. Our ${cloudSpecs.memoryGB} GB cloud container keeps your PC cool and responsive.`,
+      rationale: `Your device (${client.cores} threads${client.memoryGB ? `, ${client.memoryGB} GB reported RAM` : ""}) can bog down or swap during heavy FFmpeg encodes. Our ${cloudMemText} cloud container keeps your PC cool and responsive.`,
       cloudSpecs,
       clientSpecs: client,
     };
@@ -621,7 +672,9 @@ export function recommendExecutionMode(
       target: "BALANCED",
       score,
       headline: "EITHER WORKS — APP RECOMMENDED FOR LARGE VIDEO",
-      rationale: `Your ${client.cores}-thread system matches quick website batches well. Switch to the Desktop App for multi-gigabyte 4K encodes or zero upload wait.`,
+      rationale: isConstrainedCloud
+        ? `Quick light clips work on the shared ${cloudCoreText} vCPU / ${cloudMemText} Render container; run locally via Desktop App to avoid 512 MB RAM caps and idle spin-down waits.`
+        : `Your ${client.cores}-thread system matches quick website batches well. Switch to the Desktop App for multi-gigabyte 4K encodes or zero upload wait.`,
       cloudSpecs,
       clientSpecs: client,
     };
@@ -631,7 +684,9 @@ export function recommendExecutionMode(
     target: "DESKTOP_APP",
     score,
     headline: "USE THE NATIVE DESKTOP APP (FASTEST)",
-    rationale: `Your hardware (${client.cores} threads${client.hasDiscreteOrAppleGpu ? ", GPU hardware acceleration detected" : ""}) will run 5x–15x faster natively with zero upload/download roundtrips.`,
+    rationale: isConstrainedCloud
+      ? `Your hardware (${client.cores} threads${client.memoryGB ? `, ${client.memoryGB} GB RAM` : ""}${client.hasDiscreteOrAppleGpu ? ", GPU hardware acceleration" : ""}) easily outperforms the shared ${cloudCoreText} vCPU / ${cloudMemText} Render Free server with zero upload/download roundtrips or spin-down delays.`
+      : `Your hardware (${client.cores} threads${client.hasDiscreteOrAppleGpu ? ", GPU hardware acceleration detected" : ""}) will run 5x–15x faster natively with zero upload/download roundtrips.`,
     cloudSpecs,
     clientSpecs: client,
   };
