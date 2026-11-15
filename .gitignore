@@ -49,3 +49,6 @@ playwright-report/
 tests/*.png
 tests/stress/tests/
 dist/
+.agents/
+.vscode/
+bin/pdf-rasterizer
