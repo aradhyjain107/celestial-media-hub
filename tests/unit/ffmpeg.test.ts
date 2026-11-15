@@ -47,7 +47,7 @@ describe('executeFfmpeg', () => {
       proc.stderr = new EventEmitter();
       
       setTimeout(() => {
-        if (cmd === '/mock/ffprobe') {
+        if (String(cmd).endsWith('ffprobe')) {
           proc.stdout.emit('data', JSON.stringify({ format: { duration: '10.0' } }));
           proc.emit('close', 0);
         } else {
@@ -75,7 +75,7 @@ describe('executeFfmpeg', () => {
       proc.stderr = new EventEmitter();
       
       setTimeout(() => {
-        if (cmd === '/mock/ffprobe') {
+        if (String(cmd).endsWith('ffprobe')) {
           proc.stdout.emit('data', JSON.stringify({ format: { duration: '10.0' } }));
           proc.emit('close', 0);
         } else {

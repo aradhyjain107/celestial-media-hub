@@ -197,7 +197,7 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        if (!imageProcessed && process.platform === 'darwin' && (imageFormat === 'jpeg' || imageFormat === 'png')) {
+        if (!imageProcessed && (imageFormat === 'jpeg' || imageFormat === 'png')) {
           try {
             const sipsFormat = imageFormat === 'jpeg' ? 'jpeg' : 'png';
             const sipsArgs = ['-s', 'format', sipsFormat];
