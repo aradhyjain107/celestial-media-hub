@@ -4,10 +4,10 @@ import { executeFfmpeg, probeMediaStreams, isEncoderAvailable } from '../../../l
 import { writeInputFile, createJobDir, cleanupJobDir } from '../../../lib/system/temp';
 import { randomUUID } from 'crypto';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import { verifyAuth, registerJobOwner } from '../../../lib/security/auth';
 import { sanitizeError, sanitizeSseError } from '../../../lib/security/errors';
+import { createZipArchive } from '../../../lib/utils/archive';
 
 export const dynamic = 'force-dynamic';
 
@@ -181,9 +181,9 @@ export async function POST(req: NextRequest) {
           }
 
           try {
-            execFileSync('zip', ['-j', 'output.zip', '--', ...files], { cwd: masterDir });
+            createZipArchive(masterDir, files, 'output.zip');
           } catch (zipErr) {
-            console.warn('zip command failed or not available:', zipErr);
+            console.warn('zip archive creation failed:', zipErr);
           }
           if (!req.signal?.aborted) {
             controller.enqueue(new TextEncoder().encode(`data: {"status":"complete", "downloadUrl":"/api/download?jobId=${masterJobId}&file=output.zip"}\n\n`));

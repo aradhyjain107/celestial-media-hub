@@ -14,7 +14,7 @@ Celestial Media Hub is a full-stack Next.js 14 (App Router) media processing stu
   ├── CONTRIBUTING.md    # Contribution workflow and test checklist
   └── SECURITY.md        # Security architecture and vulnerability disclosure
 public/                  # Static assets & Web Workers (hardware-probe-worker.js, bootstrap-guard.js, upi-qr.png)
-scripts/                 # Container startup & helper scripts (docker-entrypoint.sh, pdf-rasterizer.swift)
+scripts/                 # Cross-platform launcher & container scripts (run-next.mjs, docker-entrypoint.sh, pdf-rasterizer.swift)
 src/
   ├── app/               # Next.js App Router pages, API routes (app/api/**), UI components, GlobalJobContext
   │   ├── api/           # Route handlers (audio-trim, auth, compress, convert, download, health, hevc, mute, spotify-convert, system/hardware, youtube)
@@ -24,7 +24,7 @@ src/
   │   ├── media/         # ffmpeg.ts, ytdlp.ts, remuxDecision.ts, pdfRasterizer.ts, engine/
   │   ├── security/      # auth.ts, clientAuth.ts, jwt.ts, ratelimit.ts, errors.ts, safeFetch.ts
   │   ├── system/        # env.ts, temp.ts, hardwareProfiler.ts, serverHardwareProfiler.ts
-  │   └── utils/         # filename.ts, qrcode.ts, useCursorGlow.ts
+  │   └── utils/         # archive.ts, filename.ts, qrcode.ts, useCursorGlow.ts
   ├── schemas/           # Zod input validation schemas per route
   └── middleware.ts      # Edge CORS, Fetch Metadata isolation, sliding-window rate limiter, JWT auth guard
 tests/
@@ -49,7 +49,7 @@ tests/
 ## Environment Variables (`.env.example`)
 
 - `FFMPEG_PATH`, `YTDLP_PATH`: Optional overrides; `src/lib/system/env.ts` falls back to `ffmpeg`, `ffprobe`, `yt-dlp` on `PATH`.
-- `TEMP_DIR`: Scratch job workspace directory (default: `/tmp/celestial`). Cleaned in `finally` handlers and background TTL sweepers.
+- `TEMP_DIR`: Scratch job workspace directory (defaults to `path.join(os.tmpdir(), 'celestial')`, e.g. `/tmp/celestial` on POSIX or `%TEMP%\celestial` on Windows). Cleaned in `finally` handlers and background TTL sweepers.
 - `JWT_SECRET`: Required (`>= 32` chars) in production builds/runtime; auto-generated at container boot in `scripts/docker-entrypoint.sh` if omitted.
 - `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`: Optional; `/api/spotify-convert` falls back to Spotify public embed extraction when unset.
 

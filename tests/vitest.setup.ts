@@ -1,10 +1,12 @@
 import '@testing-library/jest-dom'
+import os from 'node:os';
+import path from 'node:path';
 import { beforeEach } from 'vitest'
 import { resetGlobalJobStore } from '../src/app/context/GlobalJobContext'
 
 process.env.FFMPEG_PATH = process.env.FFMPEG_PATH || 'ffmpeg';
 process.env.YTDLP_PATH = process.env.YTDLP_PATH || 'yt-dlp';
-process.env.TEMP_DIR = process.env.TEMP_DIR || '/tmp/celestial';
+process.env.TEMP_DIR = process.env.TEMP_DIR || path.join(os.tmpdir(), 'celestial');
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-min-32-chars-long-security-token';
 
 // Reset MockEventSource.instances before each test so instances[0] always

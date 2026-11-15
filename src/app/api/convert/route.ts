@@ -12,11 +12,11 @@ import { writeInputFile, createJobDir, cleanupJobDir } from '../../../lib/system
 import { decideStrategy, buildStrategyArgs } from '../../../lib/media/remuxDecision';
 import { randomUUID } from 'crypto';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import { verifyAuth, registerJobOwner } from '../../../lib/security/auth';
 import { sanitizeError, sanitizeSseError } from '../../../lib/security/errors';
 import { isPdfFile, convertPdfToImage } from '../../../lib/media/pdfRasterizer';
+import { createZipArchive } from '../../../lib/utils/archive';
 
 export const dynamic = 'force-dynamic';
 
@@ -871,7 +871,7 @@ export async function POST(req: NextRequest) {
               if (outFiles.length > 1) {
                 try {
                   const fileBasenames = outFiles.map(f => path.basename(f));
-                  execFileSync('zip', ['-j', 'output.zip', '--', ...fileBasenames], { cwd: masterDir });
+                  createZipArchive(masterDir, fileBasenames, 'output.zip');
                 } catch {}
                 controller.enqueue(enc.encode(
                   `data: {"status":"complete","downloadUrl":"/api/download?jobId=${jobId}&file=output.zip","filename":"output.zip"}\n\n`
@@ -1016,7 +1016,7 @@ export async function POST(req: NextRequest) {
               throw new Error('No converted files were generated');
             }
             try {
-              execFileSync('zip', ['-j', 'output.zip', '--', ...files], { cwd: masterDir });
+              createZipArchive(masterDir, files, 'output.zip');
             } catch (zipErr) {
               // Graceful fallback for mock zip / missing zip tool
             }

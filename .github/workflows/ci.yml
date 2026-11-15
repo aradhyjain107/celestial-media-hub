@@ -32,3 +32,31 @@ jobs:
         env:
           JWT_SECRET: ci-build-only-jwt-secret-minimum-32-chars
         run: npm run build
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Windows media binaries
+        shell: pwsh
+        run: |
+          choco install -y ffmpeg poppler --no-progress
+          New-Item -ItemType Directory -Force -Path C:\yt-dlp | Out-Null
+          Invoke-WebRequest -Uri https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe -OutFile C:\yt-dlp\yt-dlp.exe
+          "C:\yt-dlp" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run lint
+      - name: Build production bundle
+        env:
+          JWT_SECRET: ci-build-only-jwt-secret-minimum-32-chars
+        run: npm run build
+      - name: Run Windows portability & core runtime tests
+        run: npx vitest run tests/unit/archive.test.ts tests/unit/server-hardware-profiler.test.ts tests/unit/pdf-rasterizer.test.ts tests/unit/m2-challenger.test.ts tests/unit/ffmpeg.test.ts tests/unit/ytdlp.test.ts tests/security/jwt-verification.test.ts tests/security/m2-injection-traversal.test.ts

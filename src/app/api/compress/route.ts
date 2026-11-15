@@ -8,6 +8,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import { verifyAuth, registerJobOwner } from '../../../lib/security/auth';
 import { sanitizeError, sanitizeSseError } from '../../../lib/security/errors';
+import { createZipArchive } from '../../../lib/utils/archive';
 
 export const dynamic = 'force-dynamic';
 
@@ -161,7 +162,7 @@ export async function POST(req: NextRequest) {
               }
 
               // Priority 2: macOS native sips for JPEG / PNG
-              if (!imageProcessed && (imageFormat === 'jpeg' || imageFormat === 'png')) {
+              if (!imageProcessed && process.platform === 'darwin' && (imageFormat === 'jpeg' || imageFormat === 'png')) {
                 try {
                   const sipsFormat = imageFormat === 'jpeg' ? 'jpeg' : 'png';
                   const sipsArgs = ['-s', 'format', sipsFormat];
@@ -373,9 +374,9 @@ export async function POST(req: NextRequest) {
           } else {
             if (zipFiles.length > 0) {
               try {
-                execFileSync('zip', ['-j', 'output.zip', '--', ...zipFiles], { cwd: masterDir });
+                createZipArchive(masterDir, zipFiles, 'output.zip');
               } catch (zipErr) {
-                console.warn('zip command failed or not available:', zipErr);
+                console.warn('zip archive creation failed:', zipErr);
               }
             }
             // eslint-disable-next-line security/detect-non-literal-fs-filename

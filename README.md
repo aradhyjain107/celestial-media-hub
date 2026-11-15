@@ -65,19 +65,26 @@ Celestial Media Hub interfaces directly with local system binaries for maximum e
   brew install ffmpeg
 
   # Ubuntu / Debian
-  sudo apt update && sudo apt install ffmpeg
+  sudo apt update && sudo apt install ffmpeg poppler-utils webp zip
+
+  # Windows (winget)
+  winget install Gyan.FFmpeg
   ```
 - **yt-dlp**: Required in system `PATH` (v2025.12.0+ recommended)
   ```bash
   # macOS (Homebrew)
   brew install yt-dlp
 
+  # Windows (winget)
+  winget install yt-dlp.yt-dlp
+
   # Standalone Binary / pip
   pip install --upgrade yt-dlp
   ```
-- **Image Tools (Optional for WebP/raster pipelines)**:
-  - `cwebp` (via `webp` package)
-  - `sips` (built into macOS)
+- **PDF & Image Rasterization Tools**:
+  - **Linux**: `poppler-utils` (`pdftoppm`) for PDF-to-image conversion; `webp` (`cwebp`) optional for faster WebP encoding (falls back to FFmpeg)
+  - **Windows**: `poppler` (`pdftoppm.exe` via `choco install poppler` or Scoop) for PDF-to-image conversion; multi-file `.zip` batch downloads use a built-in pure-Node ZIP encoder when `zip` is not on `PATH`
+  - **macOS**: Uses native PDFKit/`sips` when available
 
 ---
 
@@ -94,8 +101,8 @@ cp .env.example .env.local
 # FFMPEG_PATH=/opt/homebrew/bin/ffmpeg
 # YTDLP_PATH=/opt/homebrew/bin/yt-dlp
 
-# Temporary working directory for job artifacts
-TEMP_DIR=/tmp/celestial
+# Scratch working directory (optional; defaults to OS temp dir, e.g. /tmp/celestial or %TEMP%\celestial)
+TEMP_DIR=
 
 # Cryptographic secret for signing job authorization tokens (min 32 chars in production)
 # Generate with: openssl rand -base64 32

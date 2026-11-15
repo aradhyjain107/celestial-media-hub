@@ -1,14 +1,17 @@
+import os from 'node:os';
+import path from 'node:path';
 import { z } from 'zod';
 
 const isProd = process.env.NODE_ENV === 'production';
 const defaultDevSecret = 'dev-secret-key-min-32-chars-long-security-token';
+const defaultTempDir = path.join(os.tmpdir(), 'celestial');
 
 const envSchema = z.object({
   FFMPEG_PATH: z.preprocess((v) => (v && typeof v === 'string' && v.trim() ? v : 'ffmpeg'), z.string().min(1)),
   FFPROBE_PATH: z.preprocess((v) => (v && typeof v === 'string' && v.trim() ? v : 'ffprobe'), z.string().min(1)),
   YTDLP_PATH: z.string().min(1).optional(),
   YT_DLP_PATH: z.string().min(1).optional(),
-  TEMP_DIR: z.preprocess((v) => (v && typeof v === 'string' && v.trim() ? v : '/tmp/celestial'), z.string().min(1)),
+  TEMP_DIR: z.preprocess((v) => (v && typeof v === 'string' && v.trim() ? v : defaultTempDir), z.string().min(1)),
   NEXT_PUBLIC_API_BASE_URL: z.string().optional(),
   /**
    * Secret key used to sign and verify JWT tokens.

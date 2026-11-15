@@ -3,11 +3,11 @@ import { SpotifyInputSchema } from '../../../schemas/spotify';
 import { executeYtdlp } from '../../../lib/media/ytdlp';
 import { createJobDir, cleanupJobDir } from '../../../lib/system/temp';
 import { randomUUID } from 'crypto';
-import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { verifyAuth, registerJobOwner, verifyJobOwnership } from '../../../lib/security/auth';
 import { sanitizeError, sanitizeSseError } from '../../../lib/security/errors';
+import { createZipArchive } from '../../../lib/utils/archive';
 
 export const dynamic = 'force-dynamic';
 
@@ -376,9 +376,9 @@ function createSpotifySSEStream(
         }
 
         try {
-          execFileSync('zip', ['-j', 'output.zip', '--', ...files], { cwd: masterDir });
+          createZipArchive(masterDir, files, 'output.zip');
         } catch (zipErr) {
-          console.warn('zip command failed or not available:', zipErr);
+          console.warn('zip archive creation failed:', zipErr);
         }
         // eslint-disable-next-line security/detect-non-literal-fs-filename
         const zipCreated = fs.existsSync(path.join(masterDir, 'output.zip'));
