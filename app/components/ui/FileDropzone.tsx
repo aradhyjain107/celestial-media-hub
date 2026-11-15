@@ -59,29 +59,88 @@ export function FileDropzone({
     processFiles(e.dataTransfer.files);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.nativeEvent.isComposing || e.keyCode === 229) {
+      return;
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      fileInputRef.current?.click();
+    } else if (e.key === ' ') {
+      e.preventDefault();
+    }
+  };
+
+  const handleKeyUp = (e: React.KeyboardEvent) => {
+    if (e.key === ' ') {
+      e.preventDefault();
+      fileInputRef.current?.click();
+    }
+  };
+
   return (
-    <div 
-      className={`drop-target-area ${isActive ? 'active' : ''}`}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      onClick={() => fileInputRef.current?.click()}
-      data-testid={testId}
-    >
-      <input 
-        type="file" 
-        hidden 
-        ref={fileInputRef} 
+    <>
+      <input
+        type="file"
+        className="sr-only"
+        ref={fileInputRef}
         multiple={multiple}
         accept={acceptedTypes.length > 0 ? acceptedTypes.join(',') : undefined}
+        onClick={(e) => e.stopPropagation()}
         onChange={(e) => processFiles(e.target.files)}
+        onInput={(e) => processFiles((e.target as HTMLInputElement).files)}
         data-testid={testId === 'dropzone' ? 'file-input' : `${testId}-input`}
       />
-      <div className="target-crosshair"></div>
-      <div className="drop-instruction">
-        <h3>{heading}</h3>
-        <p>{formatsListText}</p>
-      </div>
-    </div>
+      <button
+        type="button"
+        className={`drop-target-area ${isActive ? 'active glow-accent' : ''}`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onClick={() => fileInputRef.current?.click()}
+        onKeyDown={handleKeyDown}
+        onKeyUp={handleKeyUp}
+        aria-label={`${heading}. Click to browse or drag and drop files.`}
+        data-testid={testId}
+      >
+        <span className="target-crosshair" aria-hidden="true">
+          {/* Reticle corner markers */}
+          <span className="reticle-corner corner-tl" />
+          <span className="reticle-corner corner-tr" />
+          <span className="reticle-corner corner-bl" />
+          <span className="reticle-corner corner-br" />
+
+          {/* Reticle axis lines */}
+          <span className="crosshair-axis axis-h" />
+          <span className="crosshair-axis axis-v" />
+
+          {/* Center glowing Plus / Add Items Badge */}
+          <span
+            className="target-add-badge"
+            data-testid="add-items-icon"
+          >
+            <svg
+              aria-hidden="true"
+              className="add-items-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </span>
+        </span>
+        <span className="drop-instruction" style={{ display: 'block' }}>
+          <span className="drop-heading" style={{ display: 'block' }}>
+            {heading}
+          </span>
+          <span className="tiny-label drop-subtext" style={{ display: 'block' }}>{formatsListText}</span>
+        </span>
+      </button>
+    </>
   );
 }

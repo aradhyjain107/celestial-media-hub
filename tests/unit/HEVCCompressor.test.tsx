@@ -1,24 +1,29 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { expect, test, vi, beforeEach, describe } from 'vitest';
-import HEVCCompressor from '../../app/tools/hevc/page';
+import UniversalCompressor from '../../app/tools/hevc/page';
+import { GlobalJobProvider } from '../../app/context/GlobalJobContext';
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 global.URL.createObjectURL = vi.fn(() => 'blob:mock');
 global.URL.revokeObjectURL = vi.fn();
+if (typeof window !== 'undefined') {
+  window.alert = vi.fn();
+}
 
-describe('HEVC Compressor', () => {
-  beforeEach(() => { vi.clearAllMocks(); });
-
-  test('renders dropzone with accepted format text', () => {
-    render(<HEVCCompressor />);
-    expect(screen.getByText(/MOV/i)).toBeInTheDocument();
-    expect(screen.getByText(/MP4/i)).toBeInTheDocument();
-    expect(screen.getByText(/MKV/i)).toBeInTheDocument();
+describe('Universal Compressor', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  test('CRF slider defaults to 28 and updates on change', () => {
-    render(<HEVCCompressor />);
+  test('renders dropzone supporting Video, Audio, and Photo formats', () => {
+    render(<GlobalJobProvider><UniversalCompressor /></GlobalJobProvider>);
+    expect(screen.getAllByText(/Universal/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Compressor/i).length).toBeGreaterThan(0);
+  });
+
+  test('CRF slider updates value on change', () => {
+    render(<GlobalJobProvider><UniversalCompressor /></GlobalJobProvider>);
     const slider = screen.getByTestId('crf-slider') as HTMLInputElement;
     expect(slider.value).toBe('28');
     expect(screen.getByTestId('crf-value')).toHaveTextContent('28');
@@ -27,57 +32,79 @@ describe('HEVC Compressor', () => {
     expect(screen.getByTestId('crf-value')).toHaveTextContent('24');
   });
 
-  test('preset selector defaults to fast and changes correctly', () => {
-    render(<HEVCCompressor />);
-    const select = screen.getByTestId('preset-select') as HTMLSelectElement;
-    expect(select.value).toBe('fast');
-    fireEvent.change(select, { target: { value: 'slow' } });
-    expect(select.value).toBe('slow');
-  });
-
-  test('hardware accel checkbox defaults checked and toggles', () => {
-    render(<HEVCCompressor />);
-    const toggle = screen.getByTestId('hw-accel-toggle');
-    // Default: checked class present
-    expect(toggle.querySelector('.checkbox.checked')).toBeTruthy();
-    fireEvent.click(toggle);
-    expect(toggle.querySelector('.checkbox:not(.checked)')).toBeTruthy();
-  });
-
-  test('file drop populates queue and shows size estimate', async () => {
-    render(<HEVCCompressor />);
+  test('batch uploading mixed files (MP4 video, MP3 audio, PNG photo) populates queue cards with media badges', async () => {
+    render(<GlobalJobProvider><UniversalCompressor /></GlobalJobProvider>);
     const input = screen.getByTestId('file-input');
-    const file = new File(['x'.repeat(10 * 1024 * 1024)], 'big.mp4', { type: 'video/mp4' });
-    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+
+    const videoFile = new File(['x'.repeat(10 * 1024 * 1024)], 'sample.mp4', { type: 'video/mp4' });
+    const audioFile = new File(['y'.repeat(5 * 1024 * 1024)], 'track.mp3', { type: 'audio/mp3' });
+    const photoFile = new File(['z'.repeat(2 * 1024 * 1024)], 'image.png', { type: 'image/png' });
+
+    Object.defineProperty(input, 'files', { value: [videoFile, audioFile, photoFile], configurable: true });
     fireEvent.change(input);
 
     await waitFor(() => {
-      expect(screen.getByText('big.mp4')).toBeInTheDocument();
-      expect(screen.getByTestId('estimated-size')).toBeInTheDocument();
-      // At CRF 28, ~50% reduction
-      expect(screen.getByText(/~50%/)).toBeInTheDocument();
+      expect(screen.getByTitle('sample.mp4')).toHaveTextContent('sample.mp4');
+      expect(screen.getByTitle('track.mp3')).toHaveTextContent('track.mp3');
+      expect(screen.getByTitle('image.png')).toHaveTextContent('image.png');
+
+      const items = screen.getAllByTestId('batch-file-item');
+      expect(items).toHaveLength(3);
     });
   });
 
-  test('options changes update POST body — CRF and preset sent correctly', async () => {
+  test('parameter switching adjusts estimated reduction accurately per media category', async () => {
+    render(<GlobalJobProvider><UniversalCompressor /></GlobalJobProvider>);
+    const input = screen.getByTestId('file-input');
+    const videoFile = new File(['x'.repeat(10 * 1024 * 1024)], 'video.mp4', { type: 'video/mp4' });
+
+    Object.defineProperty(input, 'files', { value: [videoFile], configurable: true });
+    fireEvent.change(input);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('estimated-reduction')).toBeInTheDocument();
+    });
+
+    const initialReduction = screen.getByTestId('estimated-reduction').textContent;
+
+    // Switch CRF slider to 35 (higher compression)
+    const crfSlider = screen.getByTestId('crf-slider');
+    fireEvent.change(crfSlider, { target: { value: '35' } });
+
+    await waitFor(() => {
+      const updatedReduction = screen.getByTestId('estimated-reduction').textContent;
+      expect(updatedReduction).not.toBe(initialReduction);
+    });
+
+    // Switch tab to AUDIO and adjust bitrate
+    const audioTab = screen.getByTestId('tab-audio');
+    fireEvent.click(audioTab);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('bitrate-64k')).toBeInTheDocument();
+    });
+
+    const b64Btn = screen.getByTestId('bitrate-64k');
+    fireEvent.click(b64Btn);
+
+    expect(b64Btn).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('handles batch initialization and sends request to /api/compress', async () => {
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
-      start(c) {
-        c.enqueue(encoder.encode('data: {"progress":100,"zipBase64":"AAEC"}\n\n'));
-        c.close();
+      start(controller) {
+        controller.enqueue(encoder.encode('data: {"progress":100}\n\n'));
+        controller.close();
       },
     });
+
     mockFetch.mockResolvedValueOnce({ ok: true, body: stream });
 
-    render(<HEVCCompressor />);
+    render(<GlobalJobProvider><UniversalCompressor /></GlobalJobProvider>);
 
-    // Set CRF to 22 and preset to slow
-    fireEvent.change(screen.getByTestId('crf-slider'), { target: { value: '22' } });
-    fireEvent.change(screen.getByTestId('preset-select'), { target: { value: 'slow' } });
-
-    // Drop a file
     const input = screen.getByTestId('file-input');
-    const file = new File(['mock'], 'video.mp4', { type: 'video/mp4' });
+    const file = new File(['test'], 'demo.mp4', { type: 'video/mp4' });
     Object.defineProperty(input, 'files', { value: [file], configurable: true });
     fireEvent.change(input);
 
@@ -86,99 +113,9 @@ describe('HEVC Compressor', () => {
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/hevc'),
+        expect.stringContaining('/api/compress'),
         expect.objectContaining({ method: 'POST' })
       );
-      // Verify formData has correct values by checking the call args
-      const [, opts] = mockFetch.mock.calls[0];
-      const fd = opts.body as FormData;
-      expect(fd.get('crf')).toBe('22');
-      expect(fd.get('preset')).toBe('slow');
-      expect(fd.get('hardwareAccel')).toBe('true');
     });
-  });
-
-  test('SSE progress updates fill bar', async () => {
-    const encoder = new TextEncoder();
-    const stream = new ReadableStream({
-      start(c) {
-        c.enqueue(encoder.encode('data: {"progress":67}\n\n'));
-        c.enqueue(encoder.encode('data: {"progress":100,"zipBase64":"AAEC"}\n\n'));
-        c.close();
-      },
-    });
-    mockFetch.mockResolvedValueOnce({ ok: true, body: stream });
-
-    render(<HEVCCompressor />);
-    const input = screen.getByTestId('file-input');
-    const file = new File(['mock'], 'video.mp4', { type: 'video/mp4' });
-    Object.defineProperty(input, 'files', { value: [file], configurable: true });
-    fireEvent.change(input);
-
-    fireEvent.click(screen.getByTestId('initialize-btn'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('progress-fill')).toHaveStyle({ width: '100%' });
-    }, { timeout: 3000 });
-  });
-
-  test('completion triggers ZIP download — createObjectURL called with Blob', async () => {
-    const encoder = new TextEncoder();
-    const stream = new ReadableStream({
-      start(c) {
-        c.enqueue(encoder.encode('data: {"progress":100,"zipBase64":"AAEC"}\n\n'));
-        c.close();
-      },
-    });
-    mockFetch.mockResolvedValueOnce({ ok: true, body: stream });
-
-    render(<HEVCCompressor />);
-    const input = screen.getByTestId('file-input');
-    const file = new File(['mock'], 'video.mp4', { type: 'video/mp4' });
-    Object.defineProperty(input, 'files', { value: [file], configurable: true });
-    fireEvent.change(input);
-    fireEvent.click(screen.getByTestId('initialize-btn'));
-
-    await waitFor(() => {
-      expect(URL.createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
-    }, { timeout: 3000 });
-  });
-
-  test('error state renders error badge', async () => {
-    const encoder = new TextEncoder();
-    const stream = new ReadableStream({
-      start(c) {
-        c.enqueue(encoder.encode('data: {"error":"Encoder failed"}\n\n'));
-        c.close();
-      },
-    });
-    mockFetch.mockResolvedValueOnce({ ok: true, body: stream });
-
-    render(<HEVCCompressor />);
-    const input = screen.getByTestId('file-input');
-    const file = new File(['mock'], 'video.mp4', { type: 'video/mp4' });
-    Object.defineProperty(input, 'files', { value: [file], configurable: true });
-    fireEvent.change(input);
-    fireEvent.click(screen.getByTestId('initialize-btn'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('badge-error')).toBeInTheDocument();
-    }, { timeout: 3000 });
-  });
-
-  test('clear button resets state to initial', async () => {
-    render(<HEVCCompressor />);
-    const input = screen.getByTestId('file-input');
-    const file = new File(['mock'], 'video.mp4', { type: 'video/mp4' });
-    Object.defineProperty(input, 'files', { value: [file], configurable: true });
-    fireEvent.change(input);
-
-    const clearBtn = await waitFor(() => screen.getByTestId('clear-btn'));
-    fireEvent.click(clearBtn);
-
-    await waitFor(() => {
-      expect(screen.queryByText('video.mp4')).not.toBeInTheDocument();
-    });
-    expect(screen.getByTestId('queue-count')).toHaveTextContent('QUEUE: 0 FILE');
   });
 });

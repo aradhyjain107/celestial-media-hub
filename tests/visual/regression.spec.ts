@@ -9,15 +9,15 @@ const SCREENS = [
   { name: 'media-inspector', url: '/tools/inspector' },
   { name: 'video-muter', url: '/tools/muter' },
   { name: 'hevc-compressor', url: '/tools/hevc' },
-  { name: 'universal-converter', url: '/tools/convert' },
+  { name: 'universal-converter', url: '/tools/converter' },
   { name: 'youtube-downloader', url: '/tools/youtube' },
-  { name: 'audio-trimmer', url: '/tools/audio-trim' },
-  { name: 'spotify-converter', url: '/tools/spotify-convert' }
+  { name: 'audio-trimmer', url: '/tools/trimmer' },
+  { name: 'spotify-converter', url: '/tools/spotify' }
 ];
 
 test.describe('Visual Regression Suite', () => {
   for (const screen of SCREENS) {
-    test(`baseline match for ${screen.name}`, async ({ page }) => {
+    test(`baseline match for ${screen.name}`, async ({ page }, testInfo) => {
       const res = await page.goto(`http://localhost:3000${screen.url}`);
       if (res?.status() === 404) {
         test.skip();
@@ -27,6 +27,8 @@ test.describe('Visual Regression Suite', () => {
       const screenshot = await page.screenshot();
       const baselinePath = path.join(__dirname, `../screenshots/baseline/${screen.name}.png`);
       
+      const shouldUpdate = testInfo.config.updateSnapshots === 'all' || process.env.UPDATE_SNAPSHOTS === 'true' || !!process.env.UPDATE_SNAPSHOTS;
+
       if (!fs.existsSync(baselinePath)) {
         fs.writeFileSync(baselinePath, screenshot);
         console.log(`Created new baseline for ${screen.name}`);
@@ -41,7 +43,6 @@ test.describe('Visual Regression Suite', () => {
       const height = Math.min(baseline.height, current.height);
       const diff = new PNG({ width, height });
       
-      // We pass the raw data ensuring sizes match for Pixelmatch algorithm internally natively
       if (baseline.width === current.width && baseline.height === current.height) {
         const numDiffPixels = pixelmatch(baseline.data, current.data, diff.data, width, height, { threshold: 0.1 });
         
@@ -49,15 +50,22 @@ test.describe('Visual Regression Suite', () => {
           const diffPath = path.join(__dirname, `../screenshots/diff-${screen.name}.png`);
           fs.writeFileSync(diffPath, PNG.sync.write(diff));
           
-          fs.writeFileSync(baselinePath, screenshot); 
-          console.log(`Diff found for ${screen.name} (${numDiffPixels} pixels). Baseline auto-updated to reflect Next.js strict port.`);
+          if (shouldUpdate) {
+            fs.writeFileSync(baselinePath, screenshot);
+            console.log(`Diff found for ${screen.name} (${numDiffPixels} pixels). Baseline updated.`);
+          } else {
+            console.log(`Diff found for ${screen.name} (${numDiffPixels} pixels). Baseline NOT updated.`);
+            expect(numDiffPixels).toBe(0);
+          }
         }
       } else {
-        fs.writeFileSync(baselinePath, screenshot); 
-        console.log(`Dimension mismatch. Baseline auto-updated to reflect Next.js strict port.`);
+        if (shouldUpdate) {
+          fs.writeFileSync(baselinePath, screenshot); 
+          console.log(`Dimension mismatch. Baseline updated.`);
+        } else {
+          expect(`${current.width}x${current.height}`).toBe(`${baseline.width}x${baseline.height}`);
+        }
       }
-      
-      expect(true).toBe(true);
     });
   }
 });

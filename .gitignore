@@ -11,6 +11,7 @@
 
 # next.js
 /.next/
+/.next-dev/
 /out/
 
 # production
@@ -37,3 +38,14 @@ next-env.d.ts
 tests/screenshots/diff/
 tests/screenshots/current/
 tests/screenshots/diff-*.png
+
+# runtime logs & temp artifacts
+logs/
+*.log
+.tmp/
+/tmp/
+test-results/
+playwright-report/
+tests/*.png
+tests/stress/tests/
+dist/

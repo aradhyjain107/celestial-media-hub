@@ -76,6 +76,7 @@ vi.stubGlobal('fetch', mockFetch);
 
 // ── Import page after mocks are set up ────────────────────────────────────────
 import AudioTrimmerPage from '../../app/tools/trimmer/page';
+import { GlobalJobProvider } from '../../app/context/GlobalJobContext';
 import { generateWaveform } from '../../app/components/waveform/WaveformEngine';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -100,13 +101,13 @@ describe('AudioTrimmerPage', () => {
   });
 
   it('renders the dropzone in TRIM mode by default', () => {
-    render(<AudioTrimmerPage />);
+    render(<GlobalJobProvider><AudioTrimmerPage /></GlobalJobProvider>);
     expect(screen.getByTestId('dropzone')).toBeInTheDocument();
     expect(screen.queryByTestId('waveform-canvas')).not.toBeInTheDocument();
   });
 
   it('mode toggle switches to MERGE and back to TRIM', () => {
-    render(<AudioTrimmerPage />);
+    render(<GlobalJobProvider><AudioTrimmerPage /></GlobalJobProvider>);
     const modeSelect = screen.getByTestId('mode-select');
 
     // Switch to MERGE
@@ -119,7 +120,7 @@ describe('AudioTrimmerPage', () => {
   });
 
   it('displays waveform canvas after file is dropped in TRIM mode', async () => {
-    render(<AudioTrimmerPage />);
+    render(<GlobalJobProvider><AudioTrimmerPage /></GlobalJobProvider>);
     dropFile(makeFile('song.mp3'));
 
     await waitFor(() => {
@@ -132,7 +133,7 @@ describe('AudioTrimmerPage', () => {
   });
 
   it('POSTs trim payload to /api/audio-trim in TRIM mode', async () => {
-    render(<AudioTrimmerPage />);
+    render(<GlobalJobProvider><AudioTrimmerPage /></GlobalJobProvider>);
     dropFile(makeFile('song.mp3'));
 
     await waitFor(() => {
@@ -149,15 +150,16 @@ describe('AudioTrimmerPage', () => {
       );
     });
 
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body).toHaveProperty('trimStart');
-    expect(body).toHaveProperty('trimEnd');
-    expect(body).toHaveProperty('fadeIn');
-    expect(body).toHaveProperty('fadeOut');
+    const body = mockFetch.mock.calls[0][1].body as FormData;
+    expect(body.get('startTime')).not.toBeNull();
+    expect(body.get('endTime')).not.toBeNull();
+    expect(body.get('fadeIn')).not.toBeNull();
+    expect(body.get('fadeOut')).not.toBeNull();
+    expect(body.get('mode')).toBe('trim');
   });
 
   it('POSTs merge payload with all files in MERGE mode', async () => {
-    render(<AudioTrimmerPage />);
+    render(<GlobalJobProvider><AudioTrimmerPage /></GlobalJobProvider>);
 
     // Switch to MERGE
     fireEvent.change(screen.getByTestId('mode-select'), { target: { value: 'MERGE' } });
@@ -184,13 +186,14 @@ describe('AudioTrimmerPage', () => {
       );
     });
 
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(Array.isArray(body.files)).toBe(true);
-    expect(body.files).toHaveLength(2);
+    const body = mockFetch.mock.calls[0][1].body as FormData;
+    expect(body.get('mode')).toBe('merge');
+    const files = body.getAll('files');
+    expect(files).toHaveLength(2);
   });
 
   it('fade controls update displayed values', async () => {
-    render(<AudioTrimmerPage />);
+    render(<GlobalJobProvider><AudioTrimmerPage /></GlobalJobProvider>);
     dropFile(makeFile('song.mp3'));
 
     await waitFor(() => screen.getByTestId('waveform-canvas'));
@@ -205,7 +208,7 @@ describe('AudioTrimmerPage', () => {
   });
 
   it('trim input fields reflect canvas drag selection', async () => {
-    render(<AudioTrimmerPage />);
+    render(<GlobalJobProvider><AudioTrimmerPage /></GlobalJobProvider>);
     dropFile(makeFile('song.mp3'));
 
     await waitFor(() => screen.getByTestId('waveform-canvas'));

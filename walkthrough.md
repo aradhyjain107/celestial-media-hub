@@ -4,31 +4,31 @@
 Celestial Media Hub v2 is a local-first, privacy-focused media processing suite. It completely drops the unstable Python/ML backend from v1 in favor of a robust, standalone architecture powered entirely by Next.js, FFmpeg, and yt-dlp.
 
 ## Screens generated
-1. **Dashboard** (`/`) — Grid of all available media processing tools.
+1. **Dashboard** (`/`) — 12-column Bento Grid of all available media processing tools.
 2. **Video Muter** (`/tools/muter`) — Batch strip audio or replace with silence.
 3. **HEVC Compressor** (`/tools/hevc`) — Batch H.265 compression with CRF and presets.
-4. **Universal Converter** (`/tools/converter`) — Format conversion and metadata stripping.
+4. **Universal Converter & Synthesis Studio** (`/tools/converter`) — Batch format conversion across video, audio, image formats, 16-bit RAW camera image support, and real-time Audio-to-Video Synthesis Studio with 4 kinetic visualizer styles.
 5. **YouTube Downloader** (`/tools/youtube`) — Audio/video fetching via yt-dlp including playlists.
-6. **Audio Trimmer** (`/tools/trimmer`) — Custom interactive waveform trimmer with fades.
-7. **Spotify Converter** (`/tools/spotify`) — Playlist tracking mapping into MP3s.
-8. **Media Inspector** (`/tools/inspector`) — Telemetry extraction and side-by-side media comparison.
+6. **Audio Trimmer** (`/tools/trimmer`) — Custom interactive waveform trimmer with fades and multi-track concat.
+7. **Spotify Converter** (`/tools/spotify`) — Playlist tracking mapping into high-bitrate audio.
+*(Note: Early drafts included an experimental Media Inspector screen, which was pruned from the web platform to focus on the 6 core media transformation engines).*
 
 ## Tech stack
-- **Frontend:** Next.js 14 (App Router), TypeScript, Tailwind CSS, Zod.
-- **Backend / Processing:** Node.js `child_process`, FFmpeg, yt-dlp.
-- **Testing:** Vitest (unit), Playwright (visual regression).
-- **Design System:** Custom CSS custom properties (`globals.css`) for deterministic UI.
-- **Removed:** Python, PyTorch, PySceneDetect, WaveSurfer.js, Framer Motion.
+- **Frontend:** Next.js 14 (App Router), TypeScript, Tailwind CSS, Framer Motion, HTML5 Canvas, Zod.
+- **Backend / Processing:** Node.js `child_process` (structured vector spawning), FFmpeg, yt-dlp, cwebp, sips.
+- **Testing:** Vitest (unit & security suites), Playwright (visual regression).
+- **Design System:** Obsidian Cyber-Noir (`#030304` / `#FF5A00`) custom CSS tokens (`globals.css`) and glassmorphic primitives.
+- **Removed / Superseded:** Python backend, PyTorch, PySceneDetect, WaveSurfer.js, heavy external WASM runtimes (Rive/Lottie).
 
 ## Architecture decisions
 - **Drop Python entirely:** Replaced fragility of v1's Python ML pipeline with pure FFmpeg operations, stabilizing the app.
 - **Custom waveform engine:** Built a zero-dependency Web Audio API + HTML Canvas visualizer (~500 LOC) instead of using the heavy WaveSurfer.js.
 - **SSE for FFmpeg progress:** Piped FFmpeg standard output via Server-Sent Events to the frontend for real-time progress blocks, circumventing WebSockets.
 - **Split deployment via single env var:** Using `NEXT_PUBLIC_API_BASE_URL` to route requests either locally (empty) or to a deployed backend (e.g. Railway), keeping codebase unified.
-- **No Framer Motion:** Used CSS custom keyframe animations reducing bundle by ~40KB.
+- **Framer Motion for fluid interactions:** Adopted Framer Motion for hardware-accelerated gesture recognition, layout transitions, and dynamic spotlight cards without compromising 60fps performance.
 - **Tailwind for layout, CSS vars for tokens:** Kept Tailwind for structural blocks but stored brand identity tokens in CSS custom properties for tight Canvas integration.
-- **Explicit Design Tokens:** Grounded UI generation in definitive layout rules rather than vague generative prompts.
-- **SSE Parsing Pattern:** Standardized `ReadableStream` manual parsing where `throw` must execute outside the `try/catch` JSON parse block.
+- **Explicit Design Tokens:** Grounded UI generation in definitive layout rules rather than vague generative prompts (Obsidian `#030304`, Cyber Orange `#FF5A00`).
+- **SSE Parsing Pattern & Auth:** Standardized `ReadableStream` manual parsing over `fetch` to enable `Authorization: Bearer` JWT transmission across all streaming API endpoints.
 - **Vitest fake timer scope:** Fake timers (`vi.useFakeTimers()`) are isolated to specific `test()` blocks instead of globally in `beforeEach` to prevent React render lockups.
 - **WaveformControls scope:** Separated timeline navigation (WaveformControls) from tool processing state (Options Panel).
 - **Client Directives:** Ensured `'use client'` is declared at the top of all tool pages utilizing React hooks.
@@ -42,13 +42,11 @@ Route (app)                              Size     First Load JS
 ├ ƒ /api/audio-trim                      0 B                0 B
 ├ ƒ /api/convert                         0 B                0 B
 ├ ƒ /api/hevc                            0 B                0 B
-├ ƒ /api/inspect                         0 B                0 B
 ├ ƒ /api/mute                            0 B                0 B
 ├ ƒ /api/spotify-convert                 0 B                0 B
 ├ ƒ /api/youtube                         0 B                0 B
 ├ ○ /tools/converter                     3.8 kB         91.1 kB
 ├ ○ /tools/hevc                          3.64 kB        90.9 kB
-├ ○ /tools/inspector                     2.52 kB        89.8 kB
 ├ ○ /tools/muter                         3.39 kB        90.7 kB
 ├ ○ /tools/spotify                       3.43 kB        90.7 kB
 ├ ○ /tools/trimmer                       4.42 kB        91.7 kB

@@ -5,11 +5,11 @@ import fs from 'node:fs';
 import * as tempExt from '../../lib/temp';
 import * as ytdlpExt from '../../lib/ytdlp';
 
-const { mockExecSync } = vi.hoisted(() => ({ mockExecSync: vi.fn() }));
+const { mockExecSync, mockExecFileSync } = vi.hoisted(() => ({ mockExecSync: vi.fn(), mockExecFileSync: vi.fn() }));
 
 vi.mock('node:child_process', async (importOriginal) => {
   const actual: any = await importOriginal();
-  return { ...actual, execSync: mockExecSync, default: { ...actual.default, execSync: mockExecSync } };
+  return { ...actual, execSync: mockExecSync, execFileSync: mockExecFileSync, default: { ...actual.default, execSync: mockExecSync, execFileSync: mockExecFileSync } };
 });
 
 vi.mock('../../lib/temp', () => ({
@@ -22,6 +22,8 @@ describe('/api/spotify-convert POST', () => {
   beforeEach(() => { 
     vi.clearAllMocks(); 
     vi.spyOn(fs, 'readFileSync').mockReturnValue(Buffer.from('mockSpot'));
+    vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+    vi.spyOn(fs, 'readdirSync').mockReturnValue(['Song.mp3'] as any);
     
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       text: async () => `<script id="resource" type="application/json">${encodeURIComponent(JSON.stringify({
@@ -30,9 +32,11 @@ describe('/api/spotify-convert POST', () => {
     }));
   });
 
+
   test('scrapes embed and delegates search iterations to yt-dlp yielding zipped artifacts', async () => {
     const req = {
-      json: async () => ({ playlistUrl: 'https://open.spotify.com/track/123', outputFormat: 'mp3', quality: '320' })
+      json: async () => ({ playlistUrl: 'https://open.spotify.com/track/123', outputFormat: 'mp3', quality: '320' }),
+      headers: new Headers({ authorization: 'Bearer user_test' }),
     } as any as NextRequest;
 
     const mockStream = new ReadableStream({
@@ -57,13 +61,13 @@ describe('/api/spotify-convert POST', () => {
 
     expect(global.fetch).toHaveBeenCalledWith('https://open.spotify.com/embed/track/123', expect.any(Object));
     expect(ytdlpExt.executeYtdlp).toHaveBeenCalledWith(
-        '/mock/spot/dummy', 
+        '/mock/spot', 
         'ytsearch1:Artist - Song', 
-        ['-P', '/mock/spot', '-o', '%(title)s.%(ext)s', '-x', '--audio-format', 'mp3', '--audio-quality', '320K', 'ytsearch1:Artist - Song']
+        ['-P', '/mock/spot', '-o', '%(title)s.%(ext)s', '-x', '--audio-format', 'mp3', '--audio-quality', '320K']
     );
     
     expect(text).toContain('"progress":100');
-    expect(text).toContain('"zipBase64":"bW9ja1Nwb3Q="');
+    expect(text).toMatch(/"downloadUrl":"\/api\/download\?jobId=[a-zA-Z0-9\-]+&file=output\.zip"/);
     
     vi.unstubAllGlobals();
   });

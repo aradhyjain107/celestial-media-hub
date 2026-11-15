@@ -31,4 +31,22 @@ describe('FileDropzone', () => {
     fireEvent.dragLeave(zone);
     expect(zone.className).not.toContain('active');
   });
+
+  test('renders prominent add items icon and supports keyboard trigger', () => {
+    const onSelect = vi.fn();
+    render(<FileDropzone onFilesSelected={onSelect} />);
+    
+    const addIcon = screen.getByTestId('add-items-icon');
+    expect(addIcon).toBeInTheDocument();
+
+    const zone = screen.getByTestId('dropzone');
+    const input = screen.getByTestId('file-input');
+    const clickSpy = vi.spyOn(input, 'click');
+
+    fireEvent.keyDown(zone, { key: 'Enter' });
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+
+    fireEvent.keyUp(zone, { key: ' ' });
+    expect(clickSpy).toHaveBeenCalledTimes(2);
+  });
 });

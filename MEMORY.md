@@ -4,12 +4,12 @@
 Celestial Media Hub v2
 
 ## Current phase
-Phase 5 — Handoff (COMPLETE)
+Phase 6 — Post-Stabilization (IN PROGRESS)
 
 ## Last completed task
-- **Phase:** Phase 5 — Handoff
-- **Last Completed:** Final project audit, documentation finalized, and screenshots captured for review.
-- **Current Open Task:** None.
+- **Phase:** Phase 6 — Post-Stabilization
+- **Last Completed:** Resolved critical UI "black screen" failure, fixed `next/font` autoprefixer resolution crash, and corrected `GlobalJobContext` stream types for Spotify tool.
+- **Current Open Task:** Re-enable and verify `PageTransition` and `autoprefixer` after confirmed stable boot.
 
 ## Stack summary
 - Next.js 14, TypeScript, Tailwind CSS
@@ -40,6 +40,10 @@ Phase 5 — Handoff (COMPLETE)
 - Temp files live in /tmp/celestial/[uuid]/ — cleaned in finally block always
 - No hardcoded binary paths — all via env vars (FFMPEG_PATH, YTDLP_PATH)
 - SSE (Server-Sent Events) for real-time progress streaming from FFmpeg
+
+## Fast Server Startup Procedure
+- When requested to start the servers, run `./start-servers.sh` immediately.
+- It is idempotent, self-healing, fast (<500ms if running, <3s if starting), auto-frees port 3000, guards SWC binary integrity, and launches both `celestial-dev` and `monitoring-runner` under PM2 with verification.
 
 ## Open questions / blockers
 None

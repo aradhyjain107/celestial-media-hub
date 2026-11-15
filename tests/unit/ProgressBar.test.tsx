@@ -7,7 +7,7 @@ describe('ProgressBar', () => {
     render(<ProgressBar manualProgress={45} queueCount={3} />);
     expect(screen.getByTestId('queue-status').textContent).toBe('QUEUE: 3 FILES');
     expect(screen.getByTestId('progress-text').textContent).toBe('45');
-    expect(screen.getByTestId('progress-fill').style.width).toBe('45%');
+    expect(screen.getByTestId('progress-fill')).toHaveAttribute('value', '45');
   });
 
   test('connects to SSE and updates progress state', () => {

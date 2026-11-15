@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, test, vi, beforeEach, expect } from 'vitest';
 import SpotifyConverter from '../../app/tools/spotify/page';
+import { GlobalJobProvider, resetGlobalJobStore } from '../../app/context/GlobalJobContext';
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -35,10 +36,12 @@ describe('Spotify Converter Component', () => {
     vi.clearAllMocks();
     // reset mock fetch implementations
     mockFetch.mockReset();
+    MockEventSource.instances = [];
+    resetGlobalJobStore();
   });
 
   test('URL validation shows error for invalid input', async () => {
-    render(<SpotifyConverter />);
+    render(<GlobalJobProvider><SpotifyConverter /></GlobalJobProvider>);
     const urlInput = screen.getByTestId('url-input');
     fireEvent.change(urlInput, { target: { value: 'invalid-url' } });
     fireEvent.click(screen.getByTestId('extract-btn'));
@@ -57,7 +60,7 @@ describe('Spotify Converter Component', () => {
     };
     mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ playlist: mockPlaylist }) });
 
-    render(<SpotifyConverter />);
+    render(<GlobalJobProvider><SpotifyConverter /></GlobalJobProvider>);
     const urlInput = screen.getByTestId('url-input');
     fireEvent.change(urlInput, { target: { value: 'https://open.spotify.com/playlist/abc' } });
     fireEvent.click(screen.getByTestId('extract-btn'));
@@ -82,7 +85,7 @@ describe('Spotify Converter Component', () => {
       tracks: [{ id: 't1', name: 'A' }, { id: 't2', name: 'B' }],
     };
     mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ playlist: mockPlaylist }) });
-    render(<SpotifyConverter />);
+    render(<GlobalJobProvider><SpotifyConverter /></GlobalJobProvider>);
     fireEvent.change(screen.getByTestId('url-input'), { target: { value: 'https://open.spotify.com/playlist/xyz' } });
     fireEvent.click(screen.getByTestId('extract-btn'));
     await waitFor(() => screen.getByTestId('track-list'));
@@ -100,7 +103,7 @@ describe('Spotify Converter Component', () => {
   });
 
   test('Format and quality selection updates state', async () => {
-    render(<SpotifyConverter />);
+    render(<GlobalJobProvider><SpotifyConverter /></GlobalJobProvider>);
     fireEvent.click(screen.getByTestId('format-m4a'));
     fireEvent.click(screen.getByTestId('quality-256'));
     // For style we can just test if the colors have changed or assume it works
@@ -116,7 +119,7 @@ describe('Spotify Converter Component', () => {
     mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ playlist: mockPlaylist }) });
     mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ jobId: 'job-123' }) });
 
-    render(<SpotifyConverter />);
+    render(<GlobalJobProvider><SpotifyConverter /></GlobalJobProvider>);
     fireEvent.change(screen.getByTestId('url-input'), { target: { value: 'https://open.spotify.com/playlist/abc' } });
     fireEvent.click(screen.getByTestId('extract-btn'));
     await waitFor(() => screen.getByTestId('track-list'));
@@ -127,15 +130,16 @@ describe('Spotify Converter Component', () => {
       esInstance.emit({ trackId: 't1', status: 'processing' });
       esInstance.emit({ trackId: 't1', status: 'done' });
     });
-    const badge = screen.getByTestId('badge-done');
-    expect(badge).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('badge-done')).toBeInTheDocument();
+    });
   });
 
   test('Retry button appears on error and triggers retry fetch', async () => {
     const mockPlaylist = { name: 'List', tracks: [{ id: 't1', name: 'One' }] };
     mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ playlist: mockPlaylist }) });
     mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ jobId: 'job-1' }) });
-    render(<SpotifyConverter />);
+    render(<GlobalJobProvider><SpotifyConverter /></GlobalJobProvider>);
     fireEvent.change(screen.getByTestId('url-input'), { target: { value: 'https://open.spotify.com/playlist/abc' } });
     fireEvent.click(screen.getByTestId('extract-btn'));
     await waitFor(() => screen.getByTestId('track-list'));
@@ -155,7 +159,7 @@ describe('Spotify Converter Component', () => {
     const mockPlaylist = { name: 'List', tracks: [{ id: 't1', name: 'One' }, { id: 't2', name: 'Two' }] };
     mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ playlist: mockPlaylist }) });
     mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ jobId: 'job-99' }) });
-    render(<SpotifyConverter />);
+    render(<GlobalJobProvider><SpotifyConverter /></GlobalJobProvider>);
     fireEvent.change(screen.getByTestId('url-input'), { target: { value: 'https://open.spotify.com/playlist/abc' } });
     fireEvent.click(screen.getByTestId('extract-btn'));
     await waitFor(() => screen.getByTestId('track-list'));
@@ -166,7 +170,7 @@ describe('Spotify Converter Component', () => {
       es.emit({ trackId: 't2', status: 'done' });
     });
     await waitFor(() => {
-      expect(screen.getByTestId('progress-fill').style.width).toBe('100%');
+      expect(screen.getByTestId('progress-fill')).toHaveAttribute('value', '100');
     });
   });
 });

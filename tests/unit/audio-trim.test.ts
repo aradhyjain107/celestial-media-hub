@@ -10,7 +10,10 @@ vi.mock('../../lib/temp', () => ({
   cleanupJobDir: vi.fn(),
   createJobDir: vi.fn().mockReturnValue('/mock/trimPath')
 }));
-vi.mock('../../lib/ffmpeg', () => ({ executeFfmpeg: vi.fn() }));
+vi.mock('../../lib/ffmpeg', () => ({
+  executeFfmpeg: vi.fn(),
+  getMediaDuration: vi.fn().mockResolvedValue(10)
+}));
 
 describe('/api/audio-trim POST', () => {
   beforeEach(() => { 
@@ -26,7 +29,10 @@ describe('/api/audio-trim POST', () => {
     formData.append('files', new File(['mock'], 'one.mp3', { type: 'audio/mpeg' }));
     formData.append('files', new File(['mock'], 'two.mp3', { type: 'audio/mpeg' }));
     
-    const req = { formData: async () => formData } as any as NextRequest;
+    const req = {
+      formData: async () => formData,
+      headers: new Headers({ authorization: 'Bearer user_test' }),
+    } as any as NextRequest;
 
     vi.mocked(tempExt.writeInputFile).mockResolvedValueOnce('/mock/trimPath/one.mp3').mockResolvedValueOnce('/mock/trimPath/two.mp3');
     
@@ -53,10 +59,11 @@ describe('/api/audio-trim POST', () => {
 
     expect(fs.writeFileSync).toHaveBeenCalledWith('/mock/trimPath/files.txt', "file '/mock/trimPath/one.mp3'\nfile '/mock/trimPath/two.mp3'");
     expect(ffmpegExt.executeFfmpeg).toHaveBeenCalledWith(
-        '/tmp/NON_EXISTENT_DUMMY', 
         '/mock/trimPath/files.txt', 
-        ['-f', 'concat', '-safe', '0', '-i', '/mock/trimPath/files.txt', '-c:a', 'libmp3lame', '-y', '/mock/trimPath/processed.mp3']
+        ['-f', 'concat', '-safe', '0', '-i', '/mock/trimPath/files.txt', '-c:a', 'libmp3lame', '-y', '/mock/trimPath/output.mp3'],
+        20
     );
-    expect(text).toContain('"fileBase64":"bW9ja0F1ZGlv"');
+    expect(text).toMatch(/"downloadUrl":"\/api\/download\?jobId=[a-zA-Z0-9\-]+&file=output\.mp3"/);
   });
 });
+

@@ -43,11 +43,22 @@ export function ProgressBar({ sseUrl, queueCount = 0, manualProgress = 0 }: Prog
       <div className="progress-track-area">
         <div className="progress-meta">
           <span className="tiny-label" data-testid="queue-status">QUEUE: {queueCount} FILES</span>
-          <span className="tiny-label"><span data-testid="progress-text">{progress}</span>%</span>
+          <span className="tiny-label" style={{ fontVariantNumeric: 'tabular-nums' }}>
+            <span data-testid="progress-text">{progress}</span>%
+          </span>
         </div>
-        <div className="track">
-          <div className="fill" style={{ width: `${progress}%` }} data-testid="progress-fill"></div>
-        </div>
+        <progress
+          className="cel-progress"
+          data-testid="progress-fill"
+          max={100}
+          value={progress}
+          aria-label="Job progress"
+          aria-valuetext={`${progress}%`}
+          style={{
+            marginBlockStart: 0,
+            ['--progress-bar-fill' as string]: progress >= 100 ? 'var(--success)' : 'var(--accent)',
+          }}
+        />
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { expect, test, vi, beforeEach, describe } from 'vitest';
 import VideoMuter from '../../app/tools/muter/page';
+import { GlobalJobProvider } from '../../app/context/GlobalJobContext';
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -13,15 +14,42 @@ global.URL.revokeObjectURL = vi.fn();
 describe('Video Muter', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFetch.mockImplementation(async (url: any) => {
+      const urlStr = typeof url === 'string' ? url : (url?.url || '');
+      if (urlStr.includes('/api/system/hardware')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            profile: {
+              cpuModel: 'Mock CPU',
+              totalCores: 8,
+              totalMemoryGB: 16,
+              freeMemoryGB: 8,
+              tier: 'TIER_2_PRO',
+              tierLabel: 'HIGH PERFORMANCE PRO',
+              limits: {
+                maxBatchFiles: { photo: 2500, audio: 1000, videoRemux: 300, videoEncode: 100 },
+                maxFileSizeMB: 20000,
+                maxParallelWorkers: { photo: 8, audio: 4, video: 2 },
+                optimalFfmpegThreads: 6,
+              },
+              hardwareAccelerators: { videoToolbox: true, nvenc: false, vaapi: false, qsv: false },
+            },
+          }),
+        };
+      }
+      return { ok: true, body: null };
+    });
   });
 
   test('renders dropzone with correct accepted formats text', () => {
-    render(<VideoMuter />);
+    render(<GlobalJobProvider><VideoMuter /></GlobalJobProvider>);
     expect(screen.getByText(/MOV.*MP4.*MKV.*WebM/i)).toBeInTheDocument();
   });
 
   test('file drop populates queue and shows file count', async () => {
-    render(<VideoMuter />);
+    render(<GlobalJobProvider><VideoMuter /></GlobalJobProvider>);
     const input = screen.getByTestId('file-input');
     const file = new File(['mock'], 'clip.mp4', { type: 'video/mp4' });
     Object.defineProperty(input, 'files', { value: [file], configurable: true });
@@ -29,12 +57,12 @@ describe('Video Muter', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('queue-count')).toHaveTextContent('QUEUE: 1 FILE');
-      expect(screen.getByText('clip.mp4')).toBeInTheDocument();
+      expect(screen.getByTitle('clip.mp4')).toHaveTextContent('clip.mp4');
     });
   });
 
   test('mode selector toggles between remove and silence', async () => {
-    render(<VideoMuter />);
+    render(<GlobalJobProvider><VideoMuter /></GlobalJobProvider>);
     // Drop a file first to see options
     const input = screen.getByTestId('file-input');
     const file = new File(['mock'], 'clip.mp4', { type: 'video/mp4' });
@@ -68,9 +96,35 @@ describe('Video Muter', () => {
       },
     });
 
-    mockFetch.mockResolvedValueOnce({ ok: true, body: stream });
+    mockFetch.mockImplementation(async (url: any) => {
+      const urlStr = typeof url === 'string' ? url : (url?.url || '');
+      if (urlStr.includes('/api/mute')) {
+        return { ok: true, body: stream };
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          success: true,
+          profile: {
+            cpuModel: 'Mock CPU',
+            totalCores: 8,
+            totalMemoryGB: 16,
+            freeMemoryGB: 8,
+            tier: 'TIER_2_PRO',
+            tierLabel: 'HIGH PERFORMANCE PRO',
+            limits: {
+              maxBatchFiles: { photo: 2500, audio: 1000, videoRemux: 300, videoEncode: 100 },
+              maxFileSizeMB: 20000,
+              maxParallelWorkers: { photo: 8, audio: 4, video: 2 },
+              optimalFfmpegThreads: 6,
+            },
+            hardwareAccelerators: { videoToolbox: true, nvenc: false, vaapi: false, qsv: false },
+          },
+        }),
+      };
+    });
 
-    render(<VideoMuter />);
+    render(<GlobalJobProvider><VideoMuter /></GlobalJobProvider>);
 
     const input = screen.getByTestId('file-input');
     const file = new File(['mock'], 'test.mp4', { type: 'video/mp4' });
@@ -90,31 +144,61 @@ describe('Video Muter', () => {
     // SSE drives progress fill to 100%
     await waitFor(() => {
       const fill = screen.getByTestId('progress-fill');
-      expect(fill).toHaveStyle({ width: '100%' });
+      expect(fill).toHaveAttribute('value', '100');
     }, { timeout: 3000 });
   });
 
-  test('completion triggers ZIP download — createObjectURL called with Blob', async () => {
+  test('completion triggers ZIP download via anchor click', async () => {
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       start(c) {
-        c.enqueue(encoder.encode('data: {"progress":100,"zipBase64":"AAEC"}\n\n'));
+        c.enqueue(encoder.encode('data: {"status":"complete","downloadUrl":"/api/download?jobId=123&file=output.zip"}\n\n'));
         c.close();
       },
     });
-    mockFetch.mockResolvedValueOnce({ ok: true, body: stream });
+    mockFetch.mockImplementation(async (url: any) => {
+      const urlStr = typeof url === 'string' ? url : (url?.url || '');
+      if (urlStr.includes('/api/mute')) {
+        return { ok: true, body: stream };
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          success: true,
+          profile: {
+            cpuModel: 'Mock CPU',
+            totalCores: 8,
+            totalMemoryGB: 16,
+            freeMemoryGB: 8,
+            tier: 'TIER_2_PRO',
+            tierLabel: 'HIGH PERFORMANCE PRO',
+            limits: {
+              maxBatchFiles: { photo: 2500, audio: 1000, videoRemux: 300, videoEncode: 100 },
+              maxFileSizeMB: 20000,
+              maxParallelWorkers: { photo: 8, audio: 4, video: 2 },
+              optimalFfmpegThreads: 6,
+            },
+            hardwareAccelerators: { videoToolbox: true, nvenc: false, vaapi: false, qsv: false },
+          },
+        }),
+      };
+    });
 
-    render(<VideoMuter />);
+    const mockClick = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    render(<GlobalJobProvider><VideoMuter /></GlobalJobProvider>);
     const input = screen.getByTestId('file-input');
     const file = new File(['mock'], 'test.mp4', { type: 'video/mp4' });
     Object.defineProperty(input, 'files', { value: [file], configurable: true });
     fireEvent.change(input);
+    await waitFor(() => screen.getByTestId('initialize-btn'));
     fireEvent.click(screen.getByTestId('initialize-btn'));
 
     await waitFor(() => {
-      // createObjectURL is called with a Blob when download is triggered
-      expect(URL.createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
+      expect(mockClick).toHaveBeenCalled();
     }, { timeout: 3000 });
+    
+    mockClick.mockRestore();
   });
 
   test('error state sets all items to error status', async () => {
@@ -128,11 +212,12 @@ describe('Video Muter', () => {
     });
     mockFetch.mockResolvedValueOnce({ ok: true, body: stream });
 
-    render(<VideoMuter />);
+    render(<GlobalJobProvider><VideoMuter /></GlobalJobProvider>);
     const input = screen.getByTestId('file-input');
     const file = new File(['mock'], 'fail.mp4', { type: 'video/mp4' });
     Object.defineProperty(input, 'files', { value: [file], configurable: true });
     fireEvent.change(input);
+    await waitFor(() => screen.getByTestId('initialize-btn'));
     fireEvent.click(screen.getByTestId('initialize-btn'));
 
     // Error thrown inside the loop sets all items to 'error'
@@ -142,7 +227,7 @@ describe('Video Muter', () => {
   });
 
   test('clear button resets state to empty queue', async () => {
-    render(<VideoMuter />);
+    render(<GlobalJobProvider><VideoMuter /></GlobalJobProvider>);
     const input = screen.getByTestId('file-input');
     const file = new File(['mock'], 'clip.mp4', { type: 'video/mp4' });
     Object.defineProperty(input, 'files', { value: [file], configurable: true });

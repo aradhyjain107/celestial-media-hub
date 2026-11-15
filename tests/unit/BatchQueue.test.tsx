@@ -17,12 +17,12 @@ describe('BatchQueue', () => {
     
     render(<BatchQueue items={items} />);
     
-    expect(screen.getByText('video1.mp4')).toBeInTheDocument();
+    expect(screen.getByTitle('video1.mp4')).toHaveTextContent('video1.mp4');
     expect(screen.getByText('5 MB')).toBeInTheDocument();
     expect(screen.getByText('45%')).toBeInTheDocument();
     expect(screen.getByTestId('badge-processing')).toBeInTheDocument();
 
-    expect(screen.getByText('audio.wav')).toBeInTheDocument();
+    expect(screen.getByTitle('audio.wav')).toHaveTextContent('audio.wav');
     expect(screen.getByText('500 B')).toBeInTheDocument();
     expect(screen.getByTestId('badge-pending')).toBeInTheDocument();
   });

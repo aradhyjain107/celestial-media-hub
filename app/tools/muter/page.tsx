@@ -1,142 +1,124 @@
-'use client'
+'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { FileDropzone } from '../../components/ui/FileDropzone';
 import { BatchQueue, QueueItem } from '../../components/BatchQueue';
+import { useJob, useHardwareProfile } from '../../context/GlobalJobContext';
+import { getMediaBatchLimit } from '../../../lib/hardwareProfiler';
+import { ResizableOptionsPanel } from '../../components/ui/ResizableOptionsPanel';
+import { TooltipTop, TooltipBottom } from '../../components/ui/Tooltip';
+import { StatusBadge, JobStatus } from '../../components/ui/StatusBadge';
+import { MasterHeader } from '../../components/ui/MasterHeader';
+import { safeFetch } from '../../../lib/safeFetch';
+import { ensureSessionToken, appendAuthToken, useSessionToken } from '../../../lib/clientAuth';
+
 
 type MuteMode = 'remove' | 'silence';
 
 function formatSize(bytes: number): string {
-  if (bytes === 0) return '0 B';
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
   const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+  const i = Math.min(sizes.length - 1, Math.max(0, Math.floor(Math.log(bytes) / Math.log(k))));
   // eslint-disable-next-line security/detect-object-injection
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
+function splitFilename(name: string): { stem: string; ext: string } {
+  const extIndex = name.lastIndexOf('.');
+  const hasExt = extIndex > 0 && extIndex > name.length - 10;
+  return {
+    stem: hasExt ? name.slice(0, extIndex) : name,
+    ext: hasExt ? name.slice(extIndex) : '',
+  };
+}
+
 export default function VideoMuter() {
-  const [files, setFiles] = useState<File[]>([]);
-  const [mode, setMode] = useState<MuteMode>('remove');
-  const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
-  const [progress, setProgress] = useState(0);
-  const [statusLabel, setStatusLabel] = useState('AWAITING PAYLOAD');
-  const [processing, setProcessing] = useState(false);
-  const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
+  const shouldReduceMotion = useReducedMotion();
+  const sessionToken = useSessionToken();
+  const { jobState, startJob, updateJob, clearJob } = useJob('muter');
+  const hardwareProfile = useHardwareProfile();
+  const videoRemuxLimit = getMediaBatchLimit(hardwareProfile, 'VIDEO', true);
+  const [files, setFiles] = useState<File[]>(() => jobState?.files ?? []);
+  const [mode, setMode] = useState<MuteMode>(() => jobState?.options?.mode ?? 'remove');
+
+  // Derived state from context
+  const progress = jobState?.progress ?? 0;
+  const statusLabel = jobState?.statusText ?? 'AWAITING PAYLOAD';
+  const processing = jobState?.status === 'processing';
+  const queueItems = jobState?.queueItems ?? [];
+
+  // Sync inputs to context when idle
+  useEffect(() => {
+    if (!jobState?.status || jobState?.status === 'idle') {
+      updateJob({
+        files,
+        options: { mode },
+      });
+    }
+  }, [files, mode, jobState?.status, updateJob]);
 
   const handleFilesSelected = (selectedFiles: File[]) => {
-    const limited = selectedFiles.slice(0, 20);
-    setFiles(limited);
-    setQueueItems(
-      limited.map(f => ({
-        id: f.name + f.size,
+    setFiles(prev => {
+      const combined = [...prev, ...selectedFiles].slice(0, videoRemuxLimit);
+      const initialItems: QueueItem[] = combined.map((f, i) => ({
+        id: `${f.name}-${f.size}-${i}`,
         filename: f.name,
         sizeBytes: f.size,
         status: 'pending',
         progress: 0,
-      }))
-    );
-    setProgress(0);
-    setStatusLabel('AWAITING PAYLOAD');
-  };
-
-  const updateItemStatus = (id: string, status: QueueItem['status'], prog?: number) => {
-    setQueueItems(prev =>
-      prev.map(item =>
-        item.id === id ? { ...item, status, progress: prog ?? item.progress } : item
-      )
-    );
+      }));
+      updateJob({ 
+        statusText: 'AWAITING PAYLOAD', 
+        progress: 0, 
+        queueItems: initialItems, 
+        files: combined,
+        options: { mode }
+      });
+      return combined;
+    });
   };
 
   const handleInitialize = async () => {
     if (files.length === 0 || processing) return;
-
-    setProcessing(true);
-    setProgress(0);
-    setStatusLabel('PROCESSING...');
-    setQueueItems(prev => prev.map(item => ({ ...item, status: 'processing', progress: 0 })));
 
     const formData = new FormData();
     formData.append('mode', mode);
     files.forEach(f => formData.append('files', f));
 
     try {
-      const res = await fetch((process.env.NEXT_PUBLIC_API_BASE_URL ?? '') + '/api/mute', {
+      updateJob({
+        status: 'processing',
+        progress: 0,
+        statusText: files[0]?.size > 50 * 1024 * 1024 ? 'UPLOADING MEDIA PAYLOAD...' : 'INITIALIZING VIDEO MUTER...',
+      });
+
+      const authToken = await ensureSessionToken();
+      const res = await safeFetch((process.env.NEXT_PUBLIC_API_BASE_URL ?? '') + '/api/mute', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
         body: formData,
       });
 
-      if (!res.ok || !res.body) throw new Error('Request failed');
-
-      const reader = res.body.getReader();
-      readerRef.current = reader;
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        const parts = buffer.split('\n\n');
-        buffer = parts.pop() ?? '';
-
-        for (const part of parts) {
-          if (!part.startsWith('data: ')) continue;
-          let payload: any = null;
-          try {
-            payload = JSON.parse(part.slice(6));
-          } catch (_) {
-            continue;
-          }
-
-          if (typeof payload.progress === 'number') {
-            setProgress(payload.progress);
-            // Distribute progress proportionally across all items
-            setQueueItems(prev =>
-              prev.map(item => ({
-                ...item,
-                progress: payload.progress,
-              }))
-            );
-          }
-
-          if (payload.zipBase64) {
-            // All done — mark all items as done
-            setQueueItems(prev => prev.map(item => ({ ...item, status: 'done', progress: 100 })));
-            setProgress(100);
-            setStatusLabel('COMPLETE');
-
-            // Trigger download
-            const byteArr = Uint8Array.from(atob(payload.zipBase64), c => c.charCodeAt(0));
-            const blob = new Blob([byteArr], { type: 'application/zip' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'muted_videos.zip';
-            a.click();
-            URL.revokeObjectURL(url);
-          }
-
-          if (payload.error) {
-            throw new Error(payload.error);
-          }
-        }
+      if (!res.ok || !res.body) {
+        const err = await res.json().catch(() => ({ error: 'Mute request failed' }));
+        const errorMessage = typeof err.error === 'string' ? err.error : JSON.stringify(err.error) || 'Mute request failed';
+        updateJob({ status: 'error', statusText: `ERROR: ${errorMessage}` });
+        return;
       }
+
+      startJob(res);
     } catch (err: any) {
-      setQueueItems(prev => prev.map(item => ({ ...item, status: 'error' })));
-      setStatusLabel('ERROR');
-    } finally {
-      setProcessing(false);
+      updateJob({ status: 'error', statusText: `ERROR: ${err.message || 'Mute request failed'}` });
     }
   };
 
   const handleClear = () => {
     setFiles([]);
-    setQueueItems([]);
-    setProgress(0);
-    setStatusLabel('AWAITING PAYLOAD');
-    setProcessing(false);
+    clearJob();
   };
 
   const hasFiles = files.length > 0;
@@ -144,23 +126,43 @@ export default function VideoMuter() {
   return (
     <>
       {/* Top utility bar */}
-      <div className="top-utility-bar grid-line-bottom">
-        <div className="left-stats">
-          <span className="tiny-label">CELESTIAL //</span>
-        </div>
-        <div className="right-actions">
-          <span className="tiny-label">V. 2.0.0</span>
-        </div>
-      </div>
+      <MasterHeader
+        onlyUtilityBar
+        toolName="VIDEO MUTER"
+        engineId={mode === 'remove' ? 'STRIP-STREAM' : 'SILENCE-STITCH'}
+      />
 
       {/* Workspace */}
       <div className="workspace">
         {/* Left: dropzone or batch queue */}
         <div className="dropzone-container">
-          <div className="tool-header">
-            <div className="tiny-label">TARGET // 02</div>
-            <h2 className="tool-title">Video<br/>Muter.</h2>
-          </div>
+          <MasterHeader
+            onlyToolHeader
+            targetId="TARGET // 02"
+            title={<>Video<br/>Muter.</>}
+            rightAction={hasFiles && (
+              <TooltipTop content="Remove all files from queue">
+                <motion.button
+                  type="button"
+                  onClick={handleClear}
+                  className="tiny-label"
+                  data-testid="clear-btn"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    padding: '4px 10px',
+                    borderRadius: '3px',
+                    cursor: 'pointer',
+                    color: 'var(--text-muted)'
+                  }}
+                >
+                  [ CLEAR ALL ]
+                </motion.button>
+              </TooltipTop>
+            )}
+          />
 
           {!hasFiles ? (
             <FileDropzone
@@ -170,145 +172,282 @@ export default function VideoMuter() {
               formatsListText="Drop video files to mute. Supports .MOV, .MP4, .MKV, .WebM — up to 20 files."
             />
           ) : (
-            <div style={{ flexGrow: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-              {/* File list header */}
-              <div
-                className="grid-line-bottom"
-                style={{ padding: '0 24px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}
-              >
-                <span className="tiny-label">{files.length} FILE{files.length !== 1 ? 'S' : ''} QUEUED</span>
-                <button
-                  onClick={handleClear}
-                  className="mono-data"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
-                  disabled={processing}
-                  data-testid="clear-btn"
-                >
-                  CLEAR ×
-                </button>
+            <div data-lenis-prevent style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '20px 24px 24px', gap: '16px', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="tiny-label">BATCH QUEUE ({files.length} ITEMS)</span>
+                <span className="mono-data" style={{ color: 'var(--accent)' }}>V: {files.length}</span>
               </div>
-              <BatchQueue items={queueItems} />
+
+              {/* Queue List with 21st.dev staggered motion */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {files.map((file, idx) => {
+                  const badgeColor = 'var(--accent)';
+                  
+                  return (
+                    <motion.div
+                      key={`${file.name}-${file.size}-${idx}`}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.15, delay: Math.min(idx * 0.03, 0.3) }}
+                      data-testid="batch-file-item"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '10px 14px',
+                        background: 'rgba(15, 15, 18, 0.65)',
+                        backdropFilter: 'blur(8px)',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        borderRadius: '4px',
+                        gap: '12px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                        <span
+                          style={{
+                            fontSize: '9px',
+                            fontWeight: 700,
+                            padding: '2px 7px',
+                            borderRadius: '2px',
+                            border: `1px solid ${badgeColor}`,
+                            color: badgeColor,
+                            background: 'rgba(255, 90, 0, 0.1)',
+                            letterSpacing: '0.06em'
+                          }}
+                        >
+                          VIDEO
+                        </span>
+                        {(() => {
+                          const { stem, ext } = splitFilename(file.name);
+                          return (
+                            <span
+                              className="mono-data filename-truncate"
+                              title={file.name}
+                              dir="auto"
+                              style={{ flex: 1, minWidth: 0 }}
+                            >
+                              <span className="filename-stem">{stem}</span>
+                              {ext && <span className="filename-ext">{ext}</span>}
+                            </span>
+                          );
+                        })()}
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+                        {jobState?.status && jobState.status !== 'idle' && (
+                          <StatusBadge status={jobState.status as JobStatus} />
+                        )}
+                        <span className="tiny-label" style={{ color: 'var(--text-muted)' }}>
+                          {formatSize(file.size)}
+                        </span>
+                        {jobState?.downloadUrl && jobState?.status === 'complete' && (() => {
+                          const jobId = jobState.downloadUrl.split('jobId=')[1]?.split('&')[0];
+                          const ext = file.name.substring(file.name.lastIndexOf('.')) || '.mp4';
+                          const baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+                          const targetFile = `muted_${baseName}${ext}`;
+                          const rawHref = `/api/download?jobId=${jobId}&file=${encodeURIComponent(targetFile)}`;
+                          const downloadHref = appendAuthToken(rawHref, sessionToken);
+                          return (
+                            <TooltipBottom content="Download muted file">
+                              <motion.a
+                                href={downloadHref}
+                                download={targetFile}
+                                className="tiny-label"
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                transition={{ duration: 0.12, ease: [0.23, 1, 0.32, 1] }}
+                                style={{
+                                  color: 'var(--accent)',
+                                  border: '1px solid var(--accent)',
+                                  background: 'rgba(255, 90, 0, 0.1)',
+                                  borderRadius: '3px',
+                                  padding: '3px 10px',
+                                  textDecoration: 'none',
+                                  fontWeight: 600
+                                }}
+                              >
+                                [ DOWNLOAD ]
+                              </motion.a>
+                            </TooltipBottom>
+                          );
+                        })()}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              {/* Add more files dropzone strip */}
+              <div style={{ marginTop: '8px' }}>
+                <FileDropzone
+                  onFilesSelected={handleFilesSelected}
+                  multiple={true}
+                  acceptedTypes={['.mov', '.mp4', '.mkv', '.webm']}
+                  formatsListText="+ Add more video files to mute batch"
+                />
+              </div>
             </div>
           )}
         </div>
 
-        {/* Right: options panel */}
-        <aside className="options-panel grid-line-left">
-          <div className="options-header grid-line-bottom">
-            <span className="tiny-label">PROCESSING PARAMETERS</span>
-          </div>
+        {/* Right: resizable options panel */}
+        <ResizableOptionsPanel title="PROCESSING PARAMETERS">
+          {/* Mode selector */}
+          <fieldset className="form-group" style={{ border: 'none', padding: 0, margin: 0 }}>
+            <legend
+              className="tiny-label"
+              style={{
+                width: '100%',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                paddingBottom: '6px',
+                marginBottom: '10px',
+                fontSize: '0.625rem',
+                letterSpacing: '0.08em',
+                color: 'var(--text-muted)',
+              }}
+            >
+              AUDIO MODE
+            </legend>
 
-          <div className="options-scroll">
-            {/* Mode selector */}
-            <div className="form-group">
-              <div className="form-header">
-                <span className="tiny-label">AUDIO MODE</span>
-              </div>
-
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {/* REMOVE AUDIO option row */}
-              <div
-                onClick={() => !processing && setMode('remove')}
+              <label
                 data-testid="mode-remove"
+                data-selected={mode === 'remove'}
+                className="cel-radio-row"
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '8px 0',
                   cursor: processing ? 'not-allowed' : 'pointer',
-                  borderBottom: '1px solid var(--border)',
+                  opacity: processing ? 0.65 : 1,
                 }}
               >
-                <div
-                  style={{
-                    width: '12px',
-                    height: '12px',
-                    borderRadius: '50%',
-                    border: `2px solid ${mode === 'remove' ? 'var(--accent)' : 'var(--text-muted)'}`,
-                    background: mode === 'remove' ? 'var(--accent)' : 'transparent',
-                    flexShrink: 0,
-                    transition: 'all 0.15s',
-                  }}
+                <input
+                  type="radio"
+                  name="audioMode"
+                  value="remove"
+                  checked={mode === 'remove'}
+                  disabled={processing}
+                  onChange={() => !processing && setMode('remove')}
+                  className="cel-radio-input"
                 />
-                <span className="mono-data" style={{ fontSize: '12px', color: mode === 'remove' ? 'var(--text-main)' : 'var(--text-muted)' }}>
-                  REMOVE AUDIO
+                <span style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <span className="mono-data" style={{ fontSize: '0.6875rem', letterSpacing: '0.06em', color: mode === 'remove' ? 'var(--accent)' : 'var(--text-muted)', fontWeight: 700 }}>
+                    REMOVE AUDIO STREAM
+                  </span>
+                  <span className="tiny-label" style={{ fontSize: '0.625rem', color: 'var(--text-muted)' }}>
+                    Drops audio tracks completely (-an) for instantaneous lossless video stream copy.
+                  </span>
                 </span>
-              </div>
+              </label>
 
               {/* REPLACE WITH SILENCE option row */}
-              <div
-                onClick={() => !processing && setMode('silence')}
+              <label
                 data-testid="mode-silence"
+                data-selected={mode === 'silence'}
+                className="cel-radio-row"
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '8px 0',
                   cursor: processing ? 'not-allowed' : 'pointer',
+                  opacity: processing ? 0.65 : 1,
                 }}
               >
-                <div
-                  style={{
-                    width: '12px',
-                    height: '12px',
-                    borderRadius: '50%',
-                    border: `2px solid ${mode === 'silence' ? 'var(--accent)' : 'var(--text-muted)'}`,
-                    background: mode === 'silence' ? 'var(--accent)' : 'transparent',
-                    flexShrink: 0,
-                    transition: 'all 0.15s',
-                  }}
+                <input
+                  type="radio"
+                  name="audioMode"
+                  value="silence"
+                  checked={mode === 'silence'}
+                  disabled={processing}
+                  onChange={() => !processing && setMode('silence')}
+                  className="cel-radio-input"
                 />
-                <span className="mono-data" style={{ fontSize: '12px', color: mode === 'silence' ? 'var(--text-main)' : 'var(--text-muted)' }}>
-                  REPLACE WITH SILENCE
+                <span style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <span className="mono-data" style={{ fontSize: '0.6875rem', letterSpacing: '0.06em', color: mode === 'silence' ? 'var(--accent)' : 'var(--text-muted)', fontWeight: 700 }}>
+                    REPLACE WITH SILENCE
+                  </span>
+                  <span className="tiny-label" style={{ fontSize: '0.625rem', color: 'var(--text-muted)' }}>
+                    Injects a silent audio track to guarantee compatibility with web players &amp; social apps.
+                  </span>
                 </span>
-              </div>
+              </label>
             </div>
+          </fieldset>
 
-            {/* File size summary */}
+          {/* File size summary */}
+          <AnimatePresence>
             {hasFiles && (
-              <div className="form-group">
-                <div className="form-header">
-                  <span className="tiny-label">PAYLOAD SUMMARY</span>
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2, ease: [0.77, 0, 0.175, 1] }}
+                className="form-group"
+                style={{ overflow: 'hidden' }}
+              >
+                <div className="form-header" style={{ marginBottom: '10px', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', paddingBottom: '6px' }}>
+                  <span className="tiny-label" style={{ fontSize: '10px', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>PAYLOAD SUMMARY</span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '4px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '4px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span className="tiny-label">Files</span>
+                    <span className="tiny-label">FILES</span>
                     <span className="mono-data">{files.length}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span className="tiny-label">Total Size</span>
+                    <span className="tiny-label">TOTAL SIZE</span>
                     <span className="mono-data">{formatSize(files.reduce((acc, f) => acc + f.size, 0))}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span className="tiny-label">Mode</span>
-                    <span className="mono-data" style={{ color: 'var(--accent)' }}>{mode === 'remove' ? 'REMOVE' : 'SILENCE'}</span>
+                    <span className="tiny-label">MODE</span>
+                    <span className="mono-data" style={{ color: 'var(--accent)', fontWeight: 700 }}>{mode === 'remove' ? 'REMOVE' : 'SILENCE'}</span>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             )}
-          </div>
-        </aside>
+          </AnimatePresence>
+        </ResizableOptionsPanel>
       </div>
 
       {/* Bottom progress section */}
       <div className="progress-section grid-line-top">
-        <button
+        <motion.button
+          type="button"
           className="action-btn grid-line-right"
           onClick={handleInitialize}
           disabled={!hasFiles || processing}
           data-testid="initialize-btn"
-          style={{ opacity: !hasFiles || processing ? 0.5 : 1 }}
+          whileHover={!hasFiles || processing || shouldReduceMotion ? undefined : { scale: 1.01 }}
+          whileTap={!hasFiles || processing || shouldReduceMotion ? undefined : { scale: 0.97 }}
+          transition={{ duration: 0.15, ease: [0.23, 1, 0.32, 1] }}
+          style={{
+            opacity: (!hasFiles || processing) ? 0.5 : 1,
+            cursor: (!hasFiles || processing) ? 'not-allowed' : 'pointer'
+          }}
         >
-          {processing ? 'PROCESSING...' : 'INITIALIZE'}
-        </button>
+          {processing ? (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+              <progress className="cel-spinner" aria-label="Processing" />
+              PROCESSING...
+            </span>
+          ) : (
+            'INITIALIZE'
+          )}
+        </motion.button>
 
         <div className="progress-track-area">
           <div className="progress-meta">
             <span className="tiny-label">{statusLabel}</span>
-            <span className="mono-data" data-testid="queue-count">QUEUE: {files.length} FILE{files.length !== 1 ? 'S' : ''}</span>
+            <span className="mono-data" data-testid="queue-count">
+              {files.length > 0 ? `QUEUE: ${files.length.toLocaleString('en-US')} FILE${files.length !== 1 ? 'S' : ''}` : 'QUEUE: 0 FILES'}
+            </span>
           </div>
-          <div className="track">
-            <div className="fill" style={{ width: `${progress}%` }} data-testid="progress-fill"></div>
-          </div>
+          <progress
+            className="cel-progress"
+            data-testid="progress-fill"
+            max={100}
+            value={Math.round(progress)}
+            aria-label="Processing progress"
+            aria-valuetext={`${Math.round(progress)}%`}
+            style={{
+              ['--progress-bar-fill' as string]: progress >= 100 ? 'var(--success)' : 'var(--accent)',
+            }}
+          />
         </div>
       </div>
     </>

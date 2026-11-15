@@ -1,0 +1,14 @@
+node_modules
+.next
+.next-dev
+.git
+.env*.local
+coverage
+out
+build
+tests/screenshots
+*.log
+logs
+.tmp
+test-results
+.DS_Store

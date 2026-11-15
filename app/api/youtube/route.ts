@@ -1,95 +1,282 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { YoutubeInputSchema } from '../../../schemas/youtube';
-import { executeYtdlp } from '../../../lib/ytdlp';
+import { YoutubeInputSchema, isValidMediaUrl, detectMediaPlatform } from '../../../schemas/youtube';
+import { executeYtdlp, getVideoInfo, getPlaylistInfo } from '../../../lib/ytdlp';
 import { createJobDir, cleanupJobDir } from '../../../lib/temp';
 import { randomUUID } from 'crypto';
 import path from 'node:path';
 import fs from 'node:fs';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { verifyAuth, registerJobOwner } from '../../../lib/auth';
+import { sanitizeError, sanitizeSseError } from '../../../lib/errors';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(req: NextRequest) {
-  const masterJobId = randomUUID();
+export async function GET(req: NextRequest) {
+  const session = verifyAuth(req);
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { searchParams } = new URL(req.url);
+  const action = searchParams.get('action');
+  const url = searchParams.get('url');
+
+  if (!url) {
+    return NextResponse.json({ error: 'Missing url parameter' }, { status: 400 });
+  }
+
+  if (!isValidMediaUrl(url)) {
+    return NextResponse.json({ error: 'Invalid URL parameter (must be YouTube or Instagram)' }, { status: 400 });
+  }
+
+  const platform = detectMediaPlatform(url);
   try {
-    const body = await req.json();
+    if (action === 'playlist-info') {
+      const tracks = await getPlaylistInfo(url);
+      return NextResponse.json({
+        tracks,
+        title: platform === 'instagram' ? 'Instagram Carousel / Batch' : 'Playlist',
+        thumbnail: ''
+      });
+    } else {
+      const info = await getVideoInfo(url);
+      return NextResponse.json(info);
+    }
+  } catch (err: unknown) {
+    if (platform === 'instagram') {
+      const match = url.match(/\/(reel|reels|p|tv)\/([A-Za-z0-9_-]+)/i);
+      const shortcode = match ? match[2] : 'Media';
+      if (action === 'playlist-info') {
+        return NextResponse.json({
+          tracks: [{ id: shortcode, title: `Instagram ${shortcode}`, duration: undefined }],
+          title: `Instagram Carousel (${shortcode})`,
+          thumbnail: ''
+        });
+      }
+      return NextResponse.json({
+        title: `Instagram Reel / Post (${shortcode})`,
+        thumbnail: '',
+        duration: 'INSTAGRAM STREAM'
+      });
+    }
+    const { error: msg, status } = sanitizeError(err, 'GET /api/youtube');
+    return NextResponse.json({ error: msg }, { status });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const session = verifyAuth(req);
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const masterJobId = randomUUID();
+  registerJobOwner(masterJobId, session.userId);
+  try {
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json({ error: 'Invalid or empty JSON payload' }, { status: 400 });
+    }
     const validation = YoutubeInputSchema.safeParse(body);
     if (!validation.success) return NextResponse.json({ error: validation.error.format() }, { status: 400 });
 
-    const { url, format, quality, isPlaylist, selectedIndices } = validation.data;
+    const { url, urls, format, quality, isPlaylist, selectedIndices } = validation.data;
+    const batchList = urls && urls.length > 0 ? urls : [url];
+    const isMultiUrlBatch = batchList.length > 1;
     
     const masterDir = createJobDir(masterJobId);
     
-    const args = ['-P', masterDir, '-o', '%(title)s.%(ext)s'];
+    const outputTemplate = isMultiUrlBatch ? '%(title).120s [%(id)s].%(ext)s' : '%(title)s.%(ext)s';
+    const args = ['-P', masterDir, '-o', outputTemplate];
     
     if (format === 'mp3' || format === 'm4a' || format === 'wav') {
       args.push('-x', '--audio-format', format);
+      if (quality) {
+        const qStr = String(quality).toLowerCase().endsWith('k') ? String(quality) : `${quality}K`;
+        args.push('--audio-quality', qStr);
+      }
     } else {
       if (quality === '1080p') args.push('-f', 'bestvideo[height<=1080]+bestaudio/best');
       else if (quality === '720p') args.push('-f', 'bestvideo[height<=720]+bestaudio/best');
       else if (quality === '480p') args.push('-f', 'bestvideo[height<=480]+bestaudio/best');
       else args.push('-f', 'bestvideo+bestaudio/best');
+
+      args.push('--merge-output-format', 'mp4');
     }
 
     if (!isPlaylist) args.push('--no-playlist');
     else {
-      args.push('--yes-playlist');
-      if (selectedIndices && selectedIndices.length > 0) {
-        args.push('--playlist-items', selectedIndices.join(','));
+      args.push('--yes-playlist', '-i');
+      if (!isMultiUrlBatch && selectedIndices && selectedIndices.length > 0) {
+        const items1Indexed = selectedIndices.map((i: number) => i + 1).join(',');
+        args.push('--playlist-items', items1Indexed);
+      }
+    }
+
+    let activeReader: ReadableStreamDefaultReader | null = null;
+    let activeStream: ReadableStream | null = null;
+    let cleanedUp = false;
+    const handleAbort = async (reason?: any) => {
+      if (cleanedUp) return;
+      cleanedUp = true;
+      if (activeReader) {
+        try {
+          await activeReader.cancel(reason);
+        } catch {}
+      } else if (activeStream) {
+        try {
+          await activeStream.cancel(reason);
+        } catch {}
+      }
+      cleanupJobDir(masterJobId);
+    };
+
+    const onAbort = () => {
+      void handleAbort('Request aborted by client');
+    };
+
+    if (req.signal) {
+      if (req.signal.aborted) {
+        onAbort();
+      } else {
+        req.signal.addEventListener('abort', onAbort, { once: true });
       }
     }
 
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          const dummyDir = createJobDir(`${masterJobId}/dummy`);
-          const ytdlpStream = executeYtdlp(dummyDir, url, args);
-          const reader = ytdlpStream.getReader();
-          const decoder = new TextDecoder();
-          
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
+          let lastError: unknown = null;
+          let idx = -1;
+          for (const targetUrl of batchList) {
+            idx += 1;
+            if (req.signal?.aborted || cleanedUp) return;
+            const ytdlpStream = executeYtdlp(masterDir, targetUrl, args);
+            activeStream = ytdlpStream;
+            if (req.signal?.aborted || cleanedUp) {
+              void ytdlpStream.cancel();
+              return;
+            }
+            const reader = ytdlpStream.getReader();
+            activeReader = reader;
+            if (req.signal?.aborted || cleanedUp) {
+              void reader.cancel();
+              return;
+            }
+            const decoder = new TextDecoder();
             
-            const text = decoder.decode(value);
-            const messages = text.split('\n\n').filter(Boolean);
-            
-            for (const msg of messages) {
-              if (msg.includes('"status":"done"')) continue;
-              if (msg.includes('"error"')) throw new Error(msg);
-              
-              // eslint-disable-next-line security/detect-unsafe-regex
-              const match = msg.match(/"progress":(\d+(\.\d*)?)/);
-              if (match) {
-                const prog = Math.round(parseFloat(match[1]));
-                controller.enqueue(new TextEncoder().encode(`data: {"progress":${prog}}\n\n`));
+            try {
+              while (true) {
+                if (req.signal?.aborted || cleanedUp) break;
+                const { done, value } = await reader.read();
+                if (done) break;
+                if (req.signal?.aborted || cleanedUp) break;
+                
+                const text = decoder.decode(value);
+                const messages = text.split('\n\n').filter(Boolean);
+                
+                for (const msg of messages) {
+                  if (msg.includes('"status":"done"')) continue;
+                  if (msg.includes('"error"')) throw new Error(msg);
+                  
+                  // eslint-disable-next-line security/detect-unsafe-regex
+                  const match = msg.match(/"progress":(\d+(\.\d*)?)/);
+                  if (match) {
+                    const itemProg = Math.round(parseFloat(match[1]));
+                    const overallProg = isMultiUrlBatch
+                      ? Math.round(((idx + itemProg / 100) / batchList.length) * 100)
+                      : itemProg;
+                    controller.enqueue(new TextEncoder().encode(`data: {"progress":${overallProg}}\n\n`));
+                  }
+                }
               }
+            } catch (itemErr) {
+              lastError = itemErr;
+              if (!isMultiUrlBatch) throw itemErr;
             }
           }
           
-          execSync(`zip -j output.zip *.*`, { cwd: masterDir });
+          let files: string[] = [];
+          try {
+            // eslint-disable-next-line security/detect-non-literal-fs-filename
+            if (fs.existsSync(masterDir)) {
+              // eslint-disable-next-line security/detect-non-literal-fs-filename
+              files = fs.readdirSync(masterDir).filter(f => {
+                if (f === 'output.zip' || f.startsWith('.')) return false;
+                if (f.endsWith('.part') || f.endsWith('.ytdl') || f.endsWith('.tmp') || f.endsWith('.temp.mp4')) return false;
+                if (/\.f[0-9A-Za-z_-]+\.(mp4|m4a|webm|mkv)$/i.test(f)) return false;
+                return true;
+              });
+            }
+          } catch {
+            files = [];
+          }
+          if (files.length === 0) {
+            if (lastError) throw lastError;
+            throw new Error('No files were downloaded');
+          }
+
+          try {
+            execFileSync('zip', ['-j', 'output.zip', '--', ...files], { cwd: masterDir });
+          } catch (zipErr) {
+            console.warn('zip command failed or not available:', zipErr);
+          }
           // eslint-disable-next-line security/detect-non-literal-fs-filename
-          const zipBase64 = fs.readFileSync(path.join(masterDir, 'output.zip')).toString('base64');
-          controller.enqueue(new TextEncoder().encode(`data: {"status":"done", "zipBase64":"${zipBase64}"}\n\n`));
+          const zipCreated = fs.existsSync(path.join(masterDir, 'output.zip'));
+          const finalDownloadUrl = zipCreated
+            ? `/api/download?jobId=${masterJobId}&file=output.zip`
+            : `/api/download?jobId=${masterJobId}&file=${encodeURIComponent(files[0])}`;
+          const finalFilename = zipCreated ? 'youtube_downloads.zip' : files[0];
+
+          if (!req.signal?.aborted) {
+            controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({
+              status: 'complete',
+              downloadUrl: finalDownloadUrl,
+              filename: finalFilename
+            })}\n\n`));
+          }
           
-        } catch (err: any) {
-          controller.enqueue(new TextEncoder().encode(`data: {"error":"${err.message}"}\n\n`));
+        } catch (err: unknown) {
+          if (activeReader) {
+            try {
+              await activeReader.cancel(err);
+            } catch {}
+          }
+          if (!cleanedUp) {
+            try {
+              controller.enqueue(new TextEncoder().encode(sanitizeSseError(err, 'SSE /api/youtube')));
+            } catch {}
+            cleanupJobDir(masterJobId);
+            cleanedUp = true;
+          }
         } finally {
-          cleanupJobDir(masterJobId);
-          controller.close();
+          if (req.signal) {
+            req.signal.removeEventListener('abort', onAbort);
+          }
+          try {
+            controller.close();
+          } catch {}
         }
+      },
+      async cancel(reason) {
+        if (req.signal) {
+          req.signal.removeEventListener('abort', onAbort);
+        }
+        await handleAbort(reason);
       }
     });
 
     return new NextResponse(stream, {
       headers: {
         'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
+        'Cache-Control': 'no-cache, no-transform',
         'Connection': 'keep-alive',
       },
     });
-  } catch (error: any) {
-    cleanupJobDir(masterJobId);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    if (masterJobId) cleanupJobDir(masterJobId);
+    const { error: msg, status } = sanitizeError(error, 'POST /api/youtube');
+    return NextResponse.json({ error: msg }, { status });
   }
 }
+

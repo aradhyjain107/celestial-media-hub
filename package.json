@@ -3,12 +3,28 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "dev": "rm -rf .next-dev && next dev -p 3000",
+    "dev:supervised": "bash scripts/start-servers.sh",
+    "dev:start": "bash scripts/start-servers.sh",
+    "dev:stop": "pm2 stop celestial-dev monitoring-runner",
+    "dev:restart": "pm2 restart celestial-dev monitoring-runner",
+    "dev:status": "pm2 status",
+    "dev:logs": "pm2 logs celestial-dev",
+    "build": "BROWSERSLIST_IGNORE_OLD_DATA=true rm -rf .next && BROWSERSLIST_IGNORE_OLD_DATA=true next build",
+    "start": "next start -p 3000",
+    "lint": "next lint",
+    "test": "vitest run",
+    "test:qa": "playwright test tests/visual/studio-qa.spec.ts",
+    "test:agent-qa": "bash scripts/agent-qa.sh",
+    "test:qa:console": "bash scripts/qa/console-gate.sh",
+    "test:qa:clipboard": "bash scripts/qa/clipboard-paste.sh",
+    "test:qa:desktop": "bash scripts/qa/desktop-native-upload.sh",
+    "test:qa:download": "bash scripts/qa/download-verify.sh",
+    "test:qa:all": "bash scripts/qa/run-all.sh"
   },
   "dependencies": {
+    "framer-motion": "^12.38.0",
+    "jose": "^6.2.8",
     "next": "14.2.35",
     "react": "^18",
     "react-dom": "^18",
@@ -24,6 +40,7 @@
     "@types/react-dom": "^18",
     "@vitejs/plugin-react": "^6.0.1",
     "@vitest/ui": "^4.1.0",
+    "autoprefixer": "^10.5.0",
     "eslint": "^8",
     "eslint-config-next": "14.2.35",
     "eslint-plugin-security": "^1.7.1",
@@ -35,5 +52,8 @@
     "tailwindcss": "^3.4.1",
     "typescript": "^5",
     "vitest": "^4.1.0"
+  },
+  "optionalDependencies": {
+    "@next/swc-darwin-arm64": "14.2.33"
   }
 }

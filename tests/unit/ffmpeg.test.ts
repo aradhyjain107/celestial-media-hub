@@ -58,14 +58,11 @@ describe('executeFfmpeg', () => {
       return proc as any;
     });
 
-    const stream = executeFfmpeg('/tmp/success-job', 'input.mp4', []);
+    const stream = executeFfmpeg('input.mp4', []);
     const output = await readStream(stream);
 
     expect(output).toContain('"progress":50');
     expect(output).toContain('"status":"done"');
-    
-    expect(fs.existsSync).toHaveBeenCalledWith('/tmp/success-job');
-    expect(fs.rmSync).toHaveBeenCalledWith('/tmp/success-job', { recursive: true, force: true });
   });
 
   test('error detection and cleanup on failure', async () => {
@@ -89,12 +86,9 @@ describe('executeFfmpeg', () => {
       return proc as any;
     });
 
-    const stream = executeFfmpeg('/tmp/fail-job', 'input.mp4', []);
+    const stream = executeFfmpeg('input.mp4', []);
     const output = await readStream(stream);
 
     expect(output).toContain('"error":"FFmpeg error: Fatal FFmpeg Error Process Crashed"');
-    
-    expect(fs.existsSync).toHaveBeenCalledWith('/tmp/fail-job');
-    expect(fs.rmSync).toHaveBeenCalledWith('/tmp/fail-job', { recursive: true, force: true });
   });
 });

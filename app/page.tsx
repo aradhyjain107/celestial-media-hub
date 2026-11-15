@@ -1,5 +1,10 @@
-import Link from 'next/link';
 import { Metadata } from 'next';
+import { DashboardGrid } from './components/DashboardGrid';
+import { MasterHeader } from './components/ui/MasterHeader';
+import { SpeedRecommendationMeter } from './components/ui/SpeedRecommendationMeter';
+import { SupportDonateFooter } from './components/ui/SupportDonate';
+
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Dashboard',
@@ -7,49 +12,35 @@ export const metadata: Metadata = {
 
 export default function Dashboard() {
   const tools = [
-    { num: '01', name: 'Dashboard', desc: 'System overview and telemetry routing.', path: '/' },
-    { num: '02', name: 'Video Muter', desc: 'Remove or replace audio streams in video files.', path: '/tools/muter' },
-    { num: '03', name: 'HEVC Compressor', desc: 'Hardware-accelerated H.265 compression.', path: '/tools/hevc' },
-    { num: '04', name: 'Universal Converter', desc: 'Convert media between standard formats.', path: '/tools/converter' },
-    { num: '05', name: 'YouTube Downloader', desc: 'Extract streams natively to filesystem.', path: '/tools/youtube' },
-    { num: '06', name: 'Audio Trimmer', desc: 'Merge and split audio with crossfade.', path: '/tools/trimmer' },
-    { num: '07', name: 'Spotify Converter', desc: 'Scrape and extract audio from embeds.', path: '/tools/spotify' },
-    { num: '08', name: 'Media Inspector', desc: 'Extract deep FFprobe metadata layers.', path: '/tools/inspector' }
+    { num: '02', name: 'Video Muter', desc: 'Instantly strip audio tracks or replace with silent audio channels.', path: '/tools/muter' },
+    { num: '03', name: 'Universal Compressor', desc: 'Hardware-accelerated video, audio, and image batch compressor with smart CRF estimation.', path: '/tools/hevc' },
+    { num: '04', name: 'Universal Converter', desc: 'Universal video, audio, and photo converter with smart stream remuxing & A2V studio.', path: '/tools/converter' },
+    { num: '05', name: 'YouTube Downloader', desc: 'High-speed YouTube & Instagram video/audio extractor supporting Reels, 1080p, 320kbps audio, and playlists.', path: '/tools/youtube' },
+    { num: '06', name: 'Audio Trimmer', desc: 'Precision waveform audio trimmer with sub-second cue points and multi-track concatenation.', path: '/tools/trimmer' },
+    { num: '07', name: 'Spotify Converter', desc: 'Extract high-bitrate audio from Spotify playlists, albums, and single tracks.', path: '/tools/spotify' }
   ];
 
   return (
     <>
-      <div className="top-utility-bar grid-line-bottom w-full">
-        <div className="left-stats">
-          <span className="tiny-label">CELESTIAL //</span>
-        </div>
-        <div className="right-actions">
-          <span className="tiny-label">V. 2.0.0</span>
-        </div>
-      </div>
+      <MasterHeader
+        onlyUtilityBar
+        toolName="SYSTEM DASHBOARD"
+        engineLabel="SYSTEM"
+        engineId="READY"
+        hwAccelText="STATUS: ONLINE ●"
+      />
 
-      <div className="workspace overflow-y-auto w-full">
+      <div className="workspace overflow-y-auto w-full" data-lenis-prevent>
         <div className="w-full">
-          <div className="tool-header px-0 pb-12">
-            <div className="tiny-label">TARGET // 01</div>
-            <h2 className="tool-title">System<br/>Overview.</h2>
-          </div>
+          <MasterHeader
+            onlyToolHeader
+            targetId="TARGET // 01"
+            title={<>System<br/>Overview.</>}
+          />
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 w-full">
-            {tools.map(t => (
-              <Link key={t.path} href={t.path} className="group flex flex-col justify-between border border-[var(--border)] bg-[var(--bg)] p-6 h-48 hover:bg-[#111] transition-all relative overflow-hidden cursor-pointer" style={{ textDecoration: 'none' }}>
-                 <div className="absolute top-0 left-0 w-1 h-full bg-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity" />
-                 <div>
-                   <span className="nav-index transition-colors group-hover:text-[var(--accent)]">{t.num}{' //'}</span>
-                   <h3 className="nav-name mt-2" style={{ color: 'var(--text-main)', fontSize: '16px' }}>{t.name}</h3>
-                   <p className="mt-2" style={{ color: 'var(--text-muted)', lineHeight: '1.4', fontSize: '13px' }}>{t.desc}</p>
-                 </div>
-                 <div className="flex justify-end">
-                   <span className="tiny-label group-hover:text-[var(--accent)] transition-colors">INITIALIZE &rarr;</span>
-                 </div>
-              </Link>
-            ))}
-          </div>
+          <SpeedRecommendationMeter />
+          <DashboardGrid tools={tools} />
+          <SupportDonateFooter />
         </div>
       </div>
     </>
