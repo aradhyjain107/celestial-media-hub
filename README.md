@@ -83,41 +83,52 @@ Celestial Media Hub interfaces directly with local system binaries for maximum e
 
 ## Environment Configuration
 
-Create a `.env.local` file in the project root:
+Copy `.env.example` to `.env.local` (or rely on system `PATH` defaults in development):
+
+```bash
+cp .env.example .env.local
+```
 
 ```env
-# Path overrides for system binaries (defaults to system PATH lookup if omitted)
-FFMPEG_PATH=/opt/homebrew/bin/ffmpeg
-FFPROBE_PATH=/opt/homebrew/bin/ffprobe
-YTDLP_PATH=/opt/homebrew/bin/yt-dlp
+# Optional path overrides (defaults to system PATH lookup if omitted)
+# FFMPEG_PATH=/opt/homebrew/bin/ffmpeg
+# YTDLP_PATH=/opt/homebrew/bin/yt-dlp
 
-# Temporary working directory for media slices and scratch processing
-TEMP_DIR=/tmp/celestial-media-hub
+# Temporary working directory for job artifacts
+TEMP_DIR=/tmp/celestial
 
-# Cryptographic secret for signing job authorization tokens (min 32 chars)
+# Cryptographic secret for signing job authorization tokens (min 32 chars in production)
+# Generate with: openssl rand -base64 32
 JWT_SECRET=your-32-character-or-longer-cryptographic-salt-key-here
 ```
 
 ---
 
-## Getting Started & Scripts
+## Quick Start (Local, Docker, or Free Cloud)
 
-Install dependencies:
+### Option A: Run Locally (macOS / Linux / Windows)
+
 ```bash
 npm install
-```
-
-Start the local development server:
-```bash
 npm run dev
 ```
+
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 Build for production:
 ```bash
-npm run build
+JWT_SECRET="$(openssl rand -base64 32)" npm run build
 npm run start
 ```
+
+### Option B: Run Anywhere with Docker (Zero Local Dependencies)
+
+```bash
+docker build -t celestial-media-hub .
+docker run --rm -p 7860:7860 -e JWT_SECRET="$(openssl rand -base64 32)" celestial-media-hub
+```
+
+Open [http://localhost:7860](http://localhost:7860) in your browser.
 
 Run test suites:
 ```bash
@@ -155,6 +166,8 @@ Celestial Media Hub is hardened in compliance with the **Invicti Vibe Coding Sec
 
 ---
 
-## License
+## Contributing & Open Source License
 
-Private / Proprietary. Built for local, privacy-first media processing.
+Contributions, forks, self-hosting, and pull requests are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) to get started and [SECURITY.md](SECURITY.md) for responsible disclosure.
+
+Licensed under the **[MIT License](LICENSE)** — anyone is free to use, modify, self-host, and distribute this software.
