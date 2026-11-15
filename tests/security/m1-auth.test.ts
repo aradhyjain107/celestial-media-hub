@@ -1,18 +1,18 @@
 import { describe, test, expect, vi } from 'vitest';
 
-vi.mock('../../lib/env', () => ({
+vi.mock('../../src/lib/env', () => ({
   env: { FFMPEG_PATH: '/mock/ffmpeg', YTDLP_PATH: '/mock/ytdlp', TEMP_DIR: '/mock/tmp', JWT_SECRET: 'test-secret-that-is-at-least-32-chars-long!!' },
 }));
 
 import { NextRequest } from 'next/server';
-import { verifyAuth, registerJobOwner, verifyJobOwnership, AuthSession } from '../../lib/auth';
-import { middleware } from '../../middleware';
-import { GET as downloadGET } from '../../app/api/download/route';
-import { GET as spotifyGET } from '../../app/api/spotify-convert/route';
-import { POST as convertPOST } from '../../app/api/convert/route';
-import { POST as audioTrimPOST } from '../../app/api/audio-trim/route';
-import { POST as youtubePOST } from '../../app/api/youtube/route';
-import { GET as turboGET } from '../../app/api/experimental/turbo-download/route';
+import { verifyAuth, registerJobOwner, verifyJobOwnership, AuthSession } from '../../src/lib/auth';
+import { middleware } from '../../src/middleware';
+import { GET as downloadGET } from '../../src/app/api/download/route';
+import { GET as spotifyGET } from '../../src/app/api/spotify-convert/route';
+import { POST as convertPOST } from '../../src/app/api/convert/route';
+import { POST as audioTrimPOST } from '../../src/app/api/audio-trim/route';
+import { POST as youtubePOST } from '../../src/app/api/youtube/route';
+import { GET as turboGET } from '../../src/app/api/experimental/turbo-download/route';
 
 describe('Milestone 1 Security Audit Test Suite: Authentication & BOLA Prevention', () => {
 

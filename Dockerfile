@@ -22,13 +22,13 @@ RUN npm ci
 # Copy application source
 COPY . .
 
-# Build production bundle (JWT_SECRET is validated by lib/env.ts during build)
+# Build production bundle (JWT_SECRET is validated by src/lib/env.ts during build)
 RUN JWT_SECRET="build-time-only-jwt-secret-min-32-chars-ok" npm run build \
   && npm prune --omit=dev
 
 # Hugging Face Spaces runs containers as UID 1000 (default `node` user in node:20 image)
 RUN mkdir -p /tmp/celestial \
-  && chmod +x /app/docker-entrypoint.sh \
+  && chmod +x /app/scripts/docker-entrypoint.sh \
   && chown -R node:node /app /tmp/celestial
 
 USER node
@@ -43,4 +43,4 @@ ENV NODE_ENV=production \
 
 EXPOSE 7860
 
-ENTRYPOINT ["./docker-entrypoint.sh"]
+ENTRYPOINT ["./scripts/docker-entrypoint.sh"]

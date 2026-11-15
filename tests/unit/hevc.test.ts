@@ -1,9 +1,9 @@
 import { expect, describe, test, vi, beforeEach } from 'vitest';
-import { POST } from '../../app/api/hevc/route';
+import { POST } from '../../src/app/api/hevc/route';
 import { NextRequest } from 'next/server';
 import fs from 'node:fs';
-import * as tempExt from '../../lib/temp';
-import * as ffmpegExt from '../../lib/ffmpeg';
+import * as tempExt from '../../src/lib/temp';
+import * as ffmpegExt from '../../src/lib/ffmpeg';
 
 const { mockExecSync, mockExecFileSync } = vi.hoisted(() => ({ mockExecSync: vi.fn(), mockExecFileSync: vi.fn() }));
 
@@ -12,13 +12,13 @@ vi.mock('node:child_process', async (importOriginal) => {
   return { ...actual, execSync: mockExecSync, execFileSync: mockExecFileSync, default: { ...actual.default, execSync: mockExecSync, execFileSync: mockExecFileSync } };
 });
 
-vi.mock('../../lib/temp', () => ({
+vi.mock('../../src/lib/temp', () => ({
   writeInputFile: vi.fn(),
   cleanupJobDir: vi.fn(),
   createJobDir: vi.fn().mockReturnValue('/mock/hevcPath')
 }));
 
-vi.mock('../../lib/ffmpeg', () => ({
+vi.mock('../../src/lib/ffmpeg', () => ({
   executeFfmpeg: vi.fn(),
   probeMediaStreams: vi.fn().mockResolvedValue({ hasVideo: true, hasAudio: true, duration: 10 }),
   isEncoderAvailable: vi.fn().mockImplementation(async (enc: string) => enc === 'hevc_videotoolbox')

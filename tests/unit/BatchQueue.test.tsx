@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
-import { BatchQueue } from '../../app/components/BatchQueue';
+import { BatchQueue } from '../../src/app/components/BatchQueue';
 
 describe('BatchQueue', () => {
   test('renders empty state correctly', () => {

@@ -6,10 +6,10 @@ import {
   recommendExecutionMode,
   type ClientHardwareSnapshot,
   type HardwareProfile,
-} from '../../lib/hardwareProfiler';
-import { SpeedRecommendationMeter } from '../../app/components/ui/SpeedRecommendationMeter';
+} from '../../src/lib/hardwareProfiler';
+import { SpeedRecommendationMeter } from '../../src/app/components/ui/SpeedRecommendationMeter';
 
-vi.mock('../../app/context/GlobalJobContext', () => ({
+vi.mock('../../src/app/context/GlobalJobContext', () => ({
   useHardwareProfile: vi.fn((): HardwareProfile | null => ({
     cpuModel: 'HF Cloud Xeon',
     cores: 2,

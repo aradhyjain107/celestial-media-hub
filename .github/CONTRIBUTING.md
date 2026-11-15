@@ -1,6 +1,6 @@
 # Contributing to Celestial Media Hub
 
-Thank you for helping improve Celestial Media Hub! This project is open source under the [MIT License](./LICENSE).
+Thank you for helping improve Celestial Media Hub! This project is open source under the [MIT License](../LICENSE).
 
 ## Local Development Setup
 

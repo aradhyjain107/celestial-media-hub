@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { expect, test, vi, beforeEach, describe, afterEach } from 'vitest';
-import YouTubeDownloader from '../../app/tools/youtube/page';
-import { GlobalJobProvider } from '../../app/context/GlobalJobContext';
+import YouTubeDownloader from '../../src/app/tools/youtube/page';
+import { GlobalJobProvider } from '../../src/app/context/GlobalJobContext';
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;

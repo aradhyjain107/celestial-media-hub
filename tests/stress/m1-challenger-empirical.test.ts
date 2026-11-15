@@ -38,10 +38,10 @@ import {
   cleanupJobDir,
   writeInputFile,
   sanitizeJobId
-} from '../../lib/temp';
-import { executeFfmpeg } from '../../lib/ffmpeg';
-import { executeYtdlp } from '../../lib/ytdlp';
-import { env } from '../../lib/env';
+} from '../../src/lib/temp';
+import { executeFfmpeg } from '../../src/lib/ffmpeg';
+import { executeYtdlp } from '../../src/lib/ytdlp';
+import { env } from '../../src/lib/env';
 
 import {
   GlobalJobProvider,
@@ -51,7 +51,7 @@ import {
   safeCreateObjectURL,
   safeRevokeObjectURL,
   revokeAllObjectUrls,
-} from '../../app/context/GlobalJobContext';
+} from '../../src/app/context/GlobalJobContext';
 
 // ── Scratch directory isolated for adversarial tests ────────────────────────
 const CHALLENGE_TEMP_BASE = path.resolve('/tmp/celestial_m1_challenger_scratch');

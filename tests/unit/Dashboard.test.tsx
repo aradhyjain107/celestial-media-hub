@@ -1,13 +1,13 @@
 import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { expect, describe, test, vi, beforeEach, afterEach } from 'vitest';
-import Dashboard from '../../app/page';
-import { DashboardGrid } from '../../app/components/DashboardGrid';
-import { CursorGlowController } from '../../app/components/ui/CursorGlowController';
-import { HardwareBadge } from '../../app/components/ui/HardwareBadge';
-import { ServerGuard } from '../../app/components/ui/ServerGuard';
-import { GlobalJobProvider } from '../../app/context/GlobalJobContext';
-import * as hwProfiler from '../../lib/hardwareProfiler';
+import Dashboard from '../../src/app/page';
+import { DashboardGrid } from '../../src/app/components/DashboardGrid';
+import { CursorGlowController } from '../../src/app/components/ui/CursorGlowController';
+import { HardwareBadge } from '../../src/app/components/ui/HardwareBadge';
+import { ServerGuard } from '../../src/app/components/ui/ServerGuard';
+import { GlobalJobProvider } from '../../src/app/context/GlobalJobContext';
+import * as hwProfiler from '../../src/lib/hardwareProfiler';
 
 vi.mock('next/link', () => ({
   default: ({ href, children, ...props }: any) => (

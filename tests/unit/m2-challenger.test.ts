@@ -6,7 +6,7 @@ import { execSync } from 'child_process';
 
 const SCRATCH_DIR = path.join(os.tmpdir(), 'celestial-m2-challenger-scratch');
 
-vi.mock('../../lib/env', () => ({
+vi.mock('../../src/lib/env', () => ({
   env: {
     FFMPEG_PATH: process.env.FFMPEG_PATH || '/opt/homebrew/bin/ffmpeg',
     YTDLP_PATH: process.env.YTDLP_PATH || 'yt-dlp',
@@ -16,12 +16,12 @@ vi.mock('../../lib/env', () => ({
 }));
 
 import { NextRequest } from 'next/server';
-import { POST as muteHandler } from '../../app/api/mute/route';
-import { POST as hevcHandler } from '../../app/api/hevc/route';
-import { POST as convertHandler } from '../../app/api/convert/route';
-import { POST as audioTrimHandler } from '../../app/api/audio-trim/route';
-import { GET as youtubeHandler, POST as youtubePostHandler } from '../../app/api/youtube/route';
-import { POST as spotifyHandler } from '../../app/api/spotify-convert/route';
+import { POST as muteHandler } from '../../src/app/api/mute/route';
+import { POST as hevcHandler } from '../../src/app/api/hevc/route';
+import { POST as convertHandler } from '../../src/app/api/convert/route';
+import { POST as audioTrimHandler } from '../../src/app/api/audio-trim/route';
+import { GET as youtubeHandler, POST as youtubePostHandler } from '../../src/app/api/youtube/route';
+import { POST as spotifyHandler } from '../../src/app/api/spotify-convert/route';
 
 function fileToFile(filePath: string, filename: string, mimeType: string): File {
   const buf = fs.readFileSync(filePath);

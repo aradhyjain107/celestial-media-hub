@@ -11,11 +11,11 @@
 import React, { useState } from 'react';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
-import { formatTimecode, VideoTrimmerTimeline } from '../../app/tools/converter/components/VideoTrimmerTimeline';
-import { KineticBackdropVisualizer } from '../../app/tools/converter/components/KineticBackdropVisualizer';
+import { formatTimecode, VideoTrimmerTimeline } from '../../src/app/tools/converter/components/VideoTrimmerTimeline';
+import { KineticBackdropVisualizer } from '../../src/app/tools/converter/components/KineticBackdropVisualizer';
 
 // Mock WaveformEngine
-vi.mock('../../app/components/waveform/WaveformEngine', () => ({
+vi.mock('../../src/app/components/waveform/WaveformEngine', () => ({
   generateWaveform: vi.fn().mockResolvedValue({
     left: new Float32Array(100).fill(0.5),
     right: new Float32Array(100).fill(0.5),

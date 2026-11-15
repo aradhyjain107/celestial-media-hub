@@ -20,16 +20,16 @@ import path from 'node:path';
 import cp, { execSync, ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 
-import { executeFfmpeg, probeMediaStreams } from '../lib/ffmpeg';
-import { executeYtdlp } from '../lib/ytdlp';
-import { createJobDir, cleanupJobDir, writeInputFile } from '../lib/temp';
-import { registerJobOwner, unregisterJobOwner } from '../lib/auth';
-import { CelestialStreamer } from '../lib/engine/pipe';
-import { env } from '../lib/env';
+import { executeFfmpeg, probeMediaStreams } from '../src/lib/ffmpeg';
+import { executeYtdlp } from '../src/lib/ytdlp';
+import { createJobDir, cleanupJobDir, writeInputFile } from '../src/lib/temp';
+import { registerJobOwner, unregisterJobOwner } from '../src/lib/auth';
+import { CelestialStreamer } from '../src/lib/engine/pipe';
+import { env } from '../src/lib/env';
 
-import { GET as downloadGET } from '../app/api/download/route';
-import { POST as convertPOST } from '../app/api/convert/route';
-import { POST as compressPOST } from '../app/api/compress/route';
+import { GET as downloadGET } from '../src/app/api/download/route';
+import { POST as convertPOST } from '../src/app/api/convert/route';
+import { POST as compressPOST } from '../src/app/api/compress/route';
 
 const TEST_SCRATCH_DIR = path.resolve('/tmp/celestial_m1_empirical');
 const pristineSpawn = cp.spawn.bind(cp);

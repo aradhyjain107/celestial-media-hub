@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, test, vi, beforeEach, expect } from 'vitest';
-import SpotifyConverter from '../../app/tools/spotify/page';
-import { GlobalJobProvider, resetGlobalJobStore } from '../../app/context/GlobalJobContext';
+import SpotifyConverter from '../../src/app/tools/spotify/page';
+import { GlobalJobProvider, resetGlobalJobStore } from '../../src/app/context/GlobalJobContext';
 
 // Mock fetch globally
 const mockFetch = vi.fn();

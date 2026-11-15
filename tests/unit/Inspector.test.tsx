@@ -1,10 +1,10 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { expect, describe, test, vi, beforeEach } from 'vitest';
-import { ResizableOptionsPanel } from '../../app/components/ui/ResizableOptionsPanel';
-import { MasterGlassCard } from '../../app/components/ui/MasterGlassCard';
-import { decideStrategy, buildStrategyArgs } from '../../lib/remuxDecision';
-import { getClientHardwareProfile } from '../../lib/hardwareProfiler';
+import { ResizableOptionsPanel } from '../../src/app/components/ui/ResizableOptionsPanel';
+import { MasterGlassCard } from '../../src/app/components/ui/MasterGlassCard';
+import { decideStrategy, buildStrategyArgs } from '../../src/lib/remuxDecision';
+import { getClientHardwareProfile } from '../../src/lib/hardwareProfiler';
 
 describe('Media Inspector & Inspection UI Suite', () => {
   beforeEach(() => {

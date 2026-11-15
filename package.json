@@ -11,23 +11,11 @@
   "private": true,
   "scripts": {
     "dev": "rm -rf .next-dev && next dev -p 3000",
-    "dev:supervised": "bash scripts/start-servers.sh",
-    "dev:start": "bash scripts/start-servers.sh",
-    "dev:stop": "pm2 stop celestial-dev monitoring-runner",
-    "dev:restart": "pm2 restart celestial-dev monitoring-runner",
-    "dev:status": "pm2 status",
-    "dev:logs": "pm2 logs celestial-dev",
     "build": "BROWSERSLIST_IGNORE_OLD_DATA=true rm -rf .next && BROWSERSLIST_IGNORE_OLD_DATA=true next build",
     "start": "next start -p 3000",
     "lint": "next lint",
     "test": "vitest run",
-    "test:qa": "playwright test tests/visual/studio-qa.spec.ts",
-    "test:agent-qa": "bash scripts/agent-qa.sh",
-    "test:qa:console": "bash scripts/qa/console-gate.sh",
-    "test:qa:clipboard": "bash scripts/qa/clipboard-paste.sh",
-    "test:qa:desktop": "bash scripts/qa/desktop-native-upload.sh",
-    "test:qa:download": "bash scripts/qa/download-verify.sh",
-    "test:qa:all": "bash scripts/qa/run-all.sh"
+    "test:qa": "playwright test tests/visual/studio-qa.spec.ts"
   },
   "dependencies": {
     "framer-motion": "^12.38.0",

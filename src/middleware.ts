@@ -97,7 +97,7 @@ export function middleware(req: NextRequest) {
 
   const rateLimitConfig = isInternalMonitoring
     ? { limit: 1000, windowMs: 60_000 }
-    : RATE_LIMIT_GROUPS[routeGroup];
+    : (Object.entries(RATE_LIMIT_GROUPS).find(([group]) => group === routeGroup)?.[1] ?? RATE_LIMIT_GROUPS.standard);
 
   const rateLimit = checkRateLimit(rateLimitKey, rateLimitConfig);
 

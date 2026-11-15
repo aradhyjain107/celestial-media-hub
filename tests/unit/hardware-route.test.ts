@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { GET } from "../../app/api/system/hardware/route";
+import { GET } from "../../src/app/api/system/hardware/route";
 
 describe("GET /api/system/hardware", () => {
   it("returns 200 with precision hardware telemetry and media limits", async () => {

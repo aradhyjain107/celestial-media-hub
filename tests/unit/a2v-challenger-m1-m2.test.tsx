@@ -11,12 +11,12 @@
 import React, { useState } from 'react';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { describe, it, test, expect, vi, beforeEach, afterEach } from 'vitest';
-import { formatTimecode, VideoTrimmerTimeline } from '../../app/tools/converter/components/VideoTrimmerTimeline';
-import { KineticBackdropVisualizer } from '../../app/tools/converter/components/KineticBackdropVisualizer';
-import { generateWaveform } from '../../app/components/waveform/WaveformEngine';
+import { formatTimecode, VideoTrimmerTimeline } from '../../src/app/tools/converter/components/VideoTrimmerTimeline';
+import { KineticBackdropVisualizer } from '../../src/app/tools/converter/components/KineticBackdropVisualizer';
+import { generateWaveform } from '../../src/app/components/waveform/WaveformEngine';
 
 // ── Mock WaveformEngine for Timeline tests ──
-vi.mock('../../app/components/waveform/WaveformEngine', async (importOriginal) => {
+vi.mock('../../src/app/components/waveform/WaveformEngine', async (importOriginal) => {
   const actual: any = await importOriginal();
   return {
     ...actual,

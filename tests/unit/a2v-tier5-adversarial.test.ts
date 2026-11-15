@@ -19,12 +19,12 @@ import {
   probeMediaStreams,
   getMediaDuration,
   executeFfmpeg,
-} from '../../lib/ffmpeg';
-import { ConvertInputSchema } from '../../schemas/convert';
-import { POST } from '../../app/api/convert/route';
-import * as tempExt from '../../lib/temp';
-import * as ffmpegExt from '../../lib/ffmpeg';
-import * as authExt from '../../lib/auth';
+} from '../../src/lib/ffmpeg';
+import { ConvertInputSchema } from '../../src/schemas/convert';
+import { POST } from '../../src/app/api/convert/route';
+import * as tempExt from '../../src/lib/temp';
+import * as ffmpegExt from '../../src/lib/ffmpeg';
+import * as authExt from '../../src/lib/auth';
 import { NextRequest } from 'next/server';
 import fs from 'node:fs';
 
@@ -36,14 +36,14 @@ if (!File.prototype.arrayBuffer) {
 }
 
 // ── Hoisted Mocks ──
-vi.mock('../../lib/temp', () => ({
+vi.mock('../../src/lib/temp', () => ({
   writeInputFile: vi.fn(),
   cleanupJobDir: vi.fn(),
   createJobDir: vi.fn().mockReturnValue('/mock/tmp/job-adversarial-tier5'),
   sanitizeFilename: vi.fn((f: string) => f.replace(/[^a-zA-Z0-9._-]/g, '_')),
 }));
 
-vi.mock('../../lib/env', () => ({
+vi.mock('../../src/lib/env', () => ({
   env: {
     FFMPEG_PATH: '/mock/ffmpeg',
     YTDLP_PATH: '/mock/ytdlp',
@@ -52,7 +52,7 @@ vi.mock('../../lib/env', () => ({
   },
 }));
 
-vi.mock('../../lib/ffmpeg', async (importOriginal) => {
+vi.mock('../../src/lib/ffmpeg', async (importOriginal) => {
   const actual: any = await importOriginal();
   return {
     ...actual,
@@ -64,7 +64,7 @@ vi.mock('../../lib/ffmpeg', async (importOriginal) => {
   };
 });
 
-vi.mock('../../lib/auth', () => ({
+vi.mock('../../src/lib/auth', () => ({
   verifyAuth: vi.fn().mockReturnValue({ userId: 'adversarial-challenger-user', role: 'admin' }),
   registerJobOwner: vi.fn(),
   unregisterJobOwner: vi.fn(),

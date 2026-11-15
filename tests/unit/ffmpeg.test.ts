@@ -1,5 +1,5 @@
 import { expect, describe, test, vi, beforeEach } from 'vitest';
-import { executeFfmpeg } from '../../lib/ffmpeg';
+import { executeFfmpeg } from '../../src/lib/ffmpeg';
 import fs from 'node:fs';
 import { EventEmitter } from 'events';
 
@@ -16,7 +16,7 @@ vi.mock('node:child_process', async (importOriginal) => {
   };
 });
 
-vi.mock('../../lib/env', () => ({
+vi.mock('../../src/lib/env', () => ({
   env: { FFMPEG_PATH: '/mock/ffmpeg' }
 }));
 

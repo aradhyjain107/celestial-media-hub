@@ -1,19 +1,19 @@
 // tests/unit/UniversalConverterAdversarial.test.tsx
 import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
-import UniversalConverter from '../../app/tools/converter/page';
-import { VideoTrimmerTimeline, formatTimecode } from '../../app/tools/converter/components/VideoTrimmerTimeline';
-import { KineticBackdropVisualizer } from '../../app/tools/converter/components/KineticBackdropVisualizer';
-import { VideoPreviewCanvas } from '../../app/tools/converter/components/VideoPreviewCanvas';
-import { VideoAttachmentDropzone } from '../../app/tools/converter/components/VideoAttachmentDropzone';
-import { GlobalJobProvider, resetGlobalJobStore } from '../../app/context/GlobalJobContext';
+import UniversalConverter from '../../src/app/tools/converter/page';
+import { VideoTrimmerTimeline, formatTimecode } from '../../src/app/tools/converter/components/VideoTrimmerTimeline';
+import { KineticBackdropVisualizer } from '../../src/app/tools/converter/components/KineticBackdropVisualizer';
+import { VideoPreviewCanvas } from '../../src/app/tools/converter/components/VideoPreviewCanvas';
+import { VideoAttachmentDropzone } from '../../src/app/tools/converter/components/VideoAttachmentDropzone';
+import { GlobalJobProvider, resetGlobalJobStore } from '../../src/app/context/GlobalJobContext';
 
 // ── Mocks ──
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
 // Mock WaveformEngine
-vi.mock('../../app/components/waveform/WaveformEngine', () => ({
+vi.mock('../../src/app/components/waveform/WaveformEngine', () => ({
   generateWaveform: vi.fn().mockResolvedValue({
     left: new Float32Array(100).fill(0.5),
     right: new Float32Array(100).fill(0.5),

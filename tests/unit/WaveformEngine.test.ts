@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { generateWaveform } from '../../app/components/waveform/WaveformEngine';
+import { generateWaveform } from '../../src/app/components/waveform/WaveformEngine';
 
 // ─── Helpers to build mock AudioBuffers ───────────────────────────────────────
 

@@ -1,8 +1,8 @@
 import { describe, expect, test, vi, beforeEach } from 'vitest';
-import { createJobDir, cleanupJobDir, writeInputFile } from '../../lib/temp';
+import { createJobDir, cleanupJobDir, writeInputFile } from '../../src/lib/temp';
 import fs from 'node:fs';
 
-vi.mock('../../lib/env', () => ({
+vi.mock('../../src/lib/env', () => ({
   env: { TEMP_DIR: '/mock/temp' }
 }));
 
@@ -92,7 +92,7 @@ describe('lib/temp.ts', () => {
       return { mtimeMs: Date.now() - (5 * 60 * 1000) } as any;
     });
 
-    const { startTempDirSweeper } = await import('../../lib/temp');
+    const { startTempDirSweeper } = await import('../../src/lib/temp');
     const timer = startTempDirSweeper(30 * 60 * 1000, 5 * 60 * 1000);
     
     // Advance timer to trigger sweep

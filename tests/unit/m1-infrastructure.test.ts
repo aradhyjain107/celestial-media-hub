@@ -13,7 +13,7 @@ vi.mock("node:child_process", async (importOriginal) => {
   return { ...actual, spawn: mockSpawn, default: { ...actual.default, spawn: mockSpawn } };
 });
 
-vi.mock("../../lib/env", () => ({
+vi.mock("../../src/lib/env", () => ({
   env: {
     TEMP_DIR: "/mock/temp",
     FFMPEG_PATH: "ffmpeg",
@@ -22,9 +22,9 @@ vi.mock("../../lib/env", () => ({
   }
 }));
 
-import { CelestialStreamer } from "../../lib/engine/pipe";
-import { startTempDirSweeper, writeInputFile } from "../../lib/temp";
-import { GlobalJobProvider, useJob, resetGlobalJobStore } from "../../app/context/GlobalJobContext";
+import { CelestialStreamer } from "../../src/lib/engine/pipe";
+import { startTempDirSweeper, writeInputFile } from "../../src/lib/temp";
+import { GlobalJobProvider, useJob, resetGlobalJobStore } from "../../src/app/context/GlobalJobContext";
 
 describe("Milestone M1 Infrastructure Tests", () => {
   beforeEach(() => {

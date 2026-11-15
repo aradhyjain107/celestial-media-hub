@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { expect, test, vi, beforeEach, describe } from 'vitest';
-import VideoMuter from '../../app/tools/muter/page';
-import { GlobalJobProvider } from '../../app/context/GlobalJobContext';
+import VideoMuter from '../../src/app/tools/muter/page';
+import { GlobalJobProvider } from '../../src/app/context/GlobalJobContext';
 
 // Mock fetch globally
 const mockFetch = vi.fn();

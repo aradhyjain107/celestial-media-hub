@@ -54,7 +54,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 const SCRATCH_DIR = path.resolve('/tmp/celestial_e2e_scratch');
 
-vi.mock('../../app/components/waveform/WaveformCanvas', () => ({
+vi.mock('../../src/app/components/waveform/WaveformCanvas', () => ({
   default: (props: { left: Float32Array }) =>
     React.createElement('div', {
       'data-testid': 'waveform-canvas',
@@ -62,7 +62,7 @@ vi.mock('../../app/components/waveform/WaveformCanvas', () => ({
     }),
 }));
 
-vi.mock('../../app/components/waveform/WaveformEngine', () => ({
+vi.mock('../../src/app/components/waveform/WaveformEngine', () => ({
   generateWaveform: vi.fn().mockResolvedValue({
     left: new Float32Array(100).fill(0.5),
     right: undefined,
@@ -111,19 +111,19 @@ if (typeof URL.revokeObjectURL !== 'function') {
 
 // ── Application Route Handlers & Core Libraries ─────────────────────────────
 
-import { POST as convertHandler } from '../../app/api/convert/route';
-import { POST as hevcHandler } from '../../app/api/hevc/route';
-import { POST as muteHandler } from '../../app/api/mute/route';
-import { POST as audioTrimHandler } from '../../app/api/audio-trim/route';
-import { POST as compressHandler } from '../../app/api/compress/route';
-import { GET as downloadHandler } from '../../app/api/download/route';
+import { POST as convertHandler } from '../../src/app/api/convert/route';
+import { POST as hevcHandler } from '../../src/app/api/hevc/route';
+import { POST as muteHandler } from '../../src/app/api/mute/route';
+import { POST as audioTrimHandler } from '../../src/app/api/audio-trim/route';
+import { POST as compressHandler } from '../../src/app/api/compress/route';
+import { GET as downloadHandler } from '../../src/app/api/download/route';
 
 import {
   decideStrategy,
   buildStrategyArgs,
   ConversionOptions,
   StreamInfo,
-} from '../../lib/remuxDecision';
+} from '../../src/lib/remuxDecision';
 
 import {
   executeFfmpeg,
@@ -132,7 +132,7 @@ import {
   buildAudioVideoSynthesisArgs,
   buildVisualizerSynthesisArgs,
   isEncoderAvailable,
-} from '../../lib/ffmpeg';
+} from '../../src/lib/ffmpeg';
 
 import {
   startTempDirSweeper,
@@ -141,20 +141,20 @@ import {
   writeInputFile,
   sanitizeJobId,
   sanitizeFilename,
-} from '../../lib/temp';
+} from '../../src/lib/temp';
 
-import { CelestialStreamer } from '../../lib/engine/pipe';
-import { registerJobOwner, unregisterJobOwner, verifyJobOwnership } from '../../lib/auth';
-import { env } from '../../lib/env';
+import { CelestialStreamer } from '../../src/lib/engine/pipe';
+import { registerJobOwner, unregisterJobOwner, verifyJobOwnership } from '../../src/lib/auth';
+import { env } from '../../src/lib/env';
 
-import { ConvertInputSchema } from '../../schemas/convert';
-import { HevcInputSchema } from '../../schemas/hevc';
-import { CompressInputSchema } from '../../schemas/compress';
-import { TrimInputSchema } from '../../schemas/trim';
-import { MuteInputSchema } from '../../schemas/mute';
+import { ConvertInputSchema } from '../../src/schemas/convert';
+import { HevcInputSchema } from '../../src/schemas/hevc';
+import { CompressInputSchema } from '../../src/schemas/compress';
+import { TrimInputSchema } from '../../src/schemas/trim';
+import { MuteInputSchema } from '../../src/schemas/mute';
 
-import AudioTrimmerPage from '../../app/tools/trimmer/page';
-import { GlobalJobProvider, resetGlobalJobStore } from '../../app/context/GlobalJobContext';
+import AudioTrimmerPage from '../../src/app/tools/trimmer/page';
+import { GlobalJobProvider, resetGlobalJobStore } from '../../src/app/context/GlobalJobContext';
 
 // ── Helper Utilities ─────────────────────────────────────────────────────────
 

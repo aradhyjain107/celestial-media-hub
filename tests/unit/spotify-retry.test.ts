@@ -1,7 +1,7 @@
 import { expect, describe, test, vi, beforeEach } from 'vitest';
-import { POST } from '../../app/api/spotify-convert/retry/route';
+import { POST } from '../../src/app/api/spotify-convert/retry/route';
 import { NextRequest } from 'next/server';
-import * as authExt from '../../lib/auth';
+import * as authExt from '../../src/lib/auth';
 
 describe('POST /api/spotify-convert/retry — Unit Test Suite', () => {
   beforeEach(() => {

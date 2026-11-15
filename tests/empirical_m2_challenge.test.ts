@@ -1,9 +1,9 @@
 import { expect, describe, test, vi, beforeEach, afterEach } from 'vitest';
-import { GET as youtubeGET, POST as youtubePOST } from '../app/api/youtube/route';
-import { POST as audioTrimPOST } from '../app/api/audio-trim/route';
-import { POST as spotifyPOST } from '../app/api/spotify-convert/route';
-import { getVideoInfo, getPlaylistInfo, executeYtdlp } from '../lib/ytdlp';
-import { env } from '../lib/env';
+import { GET as youtubeGET, POST as youtubePOST } from '../src/app/api/youtube/route';
+import { POST as audioTrimPOST } from '../src/app/api/audio-trim/route';
+import { POST as spotifyPOST } from '../src/app/api/spotify-convert/route';
+import { getVideoInfo, getPlaylistInfo, executeYtdlp } from '../src/lib/ytdlp';
+import { env } from '../src/lib/env';
 import { NextRequest } from 'next/server';
 import fs from 'node:fs';
 import path from 'node:path';

@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { expect, describe, test, vi, beforeEach } from 'vitest';
-import { SupportDonateFooter, SupportModal, SidebarSupportTrigger } from '../../app/components/ui/SupportDonate';
+import { SupportDonateFooter, SupportModal, SidebarSupportTrigger } from '../../src/app/components/ui/SupportDonate';
 
 describe('SupportDonate UPI Components', () => {
   beforeEach(() => {

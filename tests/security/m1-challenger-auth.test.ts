@@ -1,12 +1,12 @@
 import { describe, test, expect, vi } from 'vitest';
 
-vi.mock('../../lib/env', () => ({
+vi.mock('../../src/lib/env', () => ({
   env: { FFMPEG_PATH: '/mock/ffmpeg', YTDLP_PATH: '/mock/ytdlp', TEMP_DIR: '/mock/tmp', JWT_SECRET: 'test-secret-that-is-at-least-32-chars-long!!' },
 }));
 
 import { NextRequest } from 'next/server';
-import { verifyAuth } from '../../lib/auth';
-import { middleware } from '../../middleware';
+import { verifyAuth } from '../../src/lib/auth';
+import { middleware } from '../../src/middleware';
 
 describe('Milestone 1 Challenger 1: Authentication Stress & Edge Case Test Suite', () => {
 

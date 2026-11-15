@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom'
 import { beforeEach } from 'vitest'
-import { resetGlobalJobStore } from './app/context/GlobalJobContext'
+import { resetGlobalJobStore } from '../src/app/context/GlobalJobContext'
 
 process.env.FFMPEG_PATH = process.env.FFMPEG_PATH || '/opt/homebrew/bin/ffmpeg';
 process.env.YTDLP_PATH = process.env.YTDLP_PATH || '/opt/homebrew/bin/yt-dlp';

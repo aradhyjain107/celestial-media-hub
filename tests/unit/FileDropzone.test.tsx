@@ -1,6 +1,6 @@
 import { render, fireEvent, screen } from '@testing-library/react';
 import { describe, expect, test, vi } from 'vitest';
-import { FileDropzone } from '../../app/components/ui/FileDropzone';
+import { FileDropzone } from '../../src/app/components/ui/FileDropzone';
 
 describe('FileDropzone', () => {
   test('renders accurately and triggers selection', () => {

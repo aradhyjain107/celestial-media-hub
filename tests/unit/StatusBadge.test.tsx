@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
-import { StatusBadge } from '../../app/components/ui/StatusBadge';
+import { StatusBadge } from '../../src/app/components/ui/StatusBadge';
 
 describe('StatusBadge', () => {
   test('renders all enum variants correctly with explicit tests', () => {

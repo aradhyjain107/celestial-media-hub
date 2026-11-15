@@ -1,6 +1,6 @@
 import { describe, expect, test, vi, beforeEach } from 'vitest';
-import { executeFfmpeg } from '../../lib/ffmpeg';
-import { executeYtdlp } from '../../lib/ytdlp';
+import { executeFfmpeg } from '../../src/lib/ffmpeg';
+import { executeYtdlp } from '../../src/lib/ytdlp';
 import { EventEmitter } from 'node:events';
 
 const { mockSpawn } = vi.hoisted(() => ({
@@ -16,7 +16,7 @@ vi.mock('node:child_process', async (importOriginal) => {
   };
 });
 
-vi.mock('../../lib/env', () => ({
+vi.mock('../../src/lib/env', () => ({
   env: {
     FFMPEG_PATH: '/mock/ffmpeg',
     YTDLP_PATH: '/mock/ytdlp',

@@ -1,15 +1,15 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('../../lib/env', () => ({
+vi.mock('../../src/lib/env', () => ({
   env: { FFMPEG_PATH: '/mock/ffmpeg', YTDLP_PATH: '/mock/ytdlp', TEMP_DIR: '/mock/tmp', JWT_SECRET: 'test-secret-that-is-at-least-32-chars-long!!' },
 }));
 
 import { NextRequest } from 'next/server';
-import { verifyAuth, registerJobOwner, unregisterJobOwner, verifyJobOwnership, cleanExpiredJobOwners } from '../../lib/auth';
-import { middleware } from '../../middleware';
-import { GET as downloadGET } from '../../app/api/download/route';
-import { GET as spotifyGET, POST as spotifyPOST } from '../../app/api/spotify-convert/route';
-import { POST as spotifyRetryPOST } from '../../app/api/spotify-convert/retry/route';
+import { verifyAuth, registerJobOwner, unregisterJobOwner, verifyJobOwnership, cleanExpiredJobOwners } from '../../src/lib/auth';
+import { middleware } from '../../src/middleware';
+import { GET as downloadGET } from '../../src/app/api/download/route';
+import { GET as spotifyGET, POST as spotifyPOST } from '../../src/app/api/spotify-convert/route';
+import { POST as spotifyRetryPOST } from '../../src/app/api/spotify-convert/retry/route';
 
 describe('Milestone 1 Challenger 2: BOLA / IDOR & Job Ownership Stress Test Suite', () => {
 

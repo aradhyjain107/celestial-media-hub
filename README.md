@@ -150,7 +150,24 @@ Celestial Media Hub is hardened in compliance with the **Invicti Vibe Coding Sec
 - **Broken Object-Level Authorization (BOLA) Prevention**: Every generated media asset is cryptographically bound to its owner's session token; cross-session asset downloads are rejected with HTTP 403.
 - **SSRF Mitigation**: Outbound media extractors enforce domain allowlists and strictly reject loopback/private CIDR addresses (`127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `::1`).
 - **DoS & Payload Guardrails**: Multi-tier sliding-window IP rate limiting, 16MB stream chunk write barriers, and automated background TTL temporary file pruning.
-- **Header Stripping**: Upstream spoofable authentication headers (`x-user-id`, `x-user-role`, `x-user-email`) are stripped at the `middleware.ts` boundary.
+- **Header Stripping**: Upstream spoofable authentication headers (`x-user-id`, `x-user-role`, `x-user-email`) are stripped at the `src/middleware.ts` boundary.
+
+---
+
+## Project Layout
+
+```text
+├── src/
+│   ├── app/          # Next.js App Router pages, UI components, and API routes
+│   ├── lib/          # FFmpeg, yt-dlp, JWT/auth, rate limiter, and hardware profiler
+│   ├── schemas/      # Zod validation schemas
+│   └── middleware.ts # Edge CORS, Fetch Metadata, rate limit, and auth enforcement
+├── public/           # Static assets & Web Worker silicon probe
+├── scripts/          # Docker entrypoint & optional macOS PDF rasterizer helper
+├── tests/            # Unit, security, E2E, visual, and stress test suites
+├── Dockerfile
+└── next.config.mjs
+```
 
 ---
 
@@ -168,6 +185,6 @@ Celestial Media Hub is hardened in compliance with the **Invicti Vibe Coding Sec
 
 ## Contributing & Open Source License
 
-Contributions, forks, self-hosting, and pull requests are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) to get started and [SECURITY.md](SECURITY.md) for responsible disclosure.
+Contributions, forks, self-hosting, and pull requests are welcome! See [CONTRIBUTING.md](.github/CONTRIBUTING.md) to get started and [SECURITY.md](.github/SECURITY.md) for responsible disclosure.
 
 Licensed under the **[MIT License](LICENSE)** — anyone is free to use, modify, self-host, and distribute this software.

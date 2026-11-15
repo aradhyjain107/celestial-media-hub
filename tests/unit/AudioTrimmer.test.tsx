@@ -16,14 +16,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
 // Mock WaveformCanvas — canvas doesn't exist in jsdom
-vi.mock('../../app/components/waveform/WaveformCanvas', () => ({
+vi.mock('../../src/app/components/waveform/WaveformCanvas', () => ({
   default: (props: { left: Float32Array }) => (
     <div data-testid="waveform-canvas" data-samples={props.left.length} />
   ),
 }));
 
 // Mock WaveformEngine
-vi.mock('../../app/components/waveform/WaveformEngine', () => ({
+vi.mock('../../src/app/components/waveform/WaveformEngine', () => ({
   generateWaveform: vi.fn().mockResolvedValue({
     left: new Float32Array(100).fill(0.5),
     right: undefined,
@@ -75,9 +75,9 @@ const mockFetch = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.reso
 vi.stubGlobal('fetch', mockFetch);
 
 // ── Import page after mocks are set up ────────────────────────────────────────
-import AudioTrimmerPage from '../../app/tools/trimmer/page';
-import { GlobalJobProvider } from '../../app/context/GlobalJobContext';
-import { generateWaveform } from '../../app/components/waveform/WaveformEngine';
+import AudioTrimmerPage from '../../src/app/tools/trimmer/page';
+import { GlobalJobProvider } from '../../src/app/context/GlobalJobContext';
+import { generateWaveform } from '../../src/app/components/waveform/WaveformEngine';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

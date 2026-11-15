@@ -1,15 +1,15 @@
 // tests/unit/UniversalConverterA2V.test.tsx
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
-import UniversalConverter from '../../app/tools/converter/page';
-import { GlobalJobProvider } from '../../app/context/GlobalJobContext';
+import UniversalConverter from '../../src/app/tools/converter/page';
+import { GlobalJobProvider } from '../../src/app/context/GlobalJobContext';
 
 // ── Mocks ──
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
 // Mock WaveformEngine
-vi.mock('../../app/components/waveform/WaveformEngine', () => ({
+vi.mock('../../src/app/components/waveform/WaveformEngine', () => ({
   generateWaveform: vi.fn().mockResolvedValue({
     left: new Float32Array(100).fill(0.5),
     right: new Float32Array(100).fill(0.5),
@@ -95,7 +95,7 @@ vi.stubGlobal('URL', {
   revokeObjectURL: vi.fn(),
 });
 
-import { resetGlobalJobStore } from '../../app/context/GlobalJobContext';
+import { resetGlobalJobStore } from '../../src/app/context/GlobalJobContext';
 
 const setFileInputFiles = (input: HTMLElement, files: File[]) => {
   Object.defineProperty(input, 'files', {

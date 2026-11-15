@@ -14,12 +14,12 @@ import {
   classifyRouteGroup,
   RATE_LIMIT_GROUPS,
   __resetStoreForTesting,
-} from '../../lib/ratelimit';
-import { middleware } from '../../middleware';
+} from '../../src/lib/ratelimit';
+import { middleware } from '../../src/middleware';
 import { NextRequest } from 'next/server';
 
 // ─── Env mock ─────────────────────────────────────────────────────────────────
-vi.mock('../../lib/env', () => ({
+vi.mock('../../src/lib/env', () => ({
   env: {
     FFMPEG_PATH: '/mock/ffmpeg',
     YTDLP_PATH: '/mock/ytdlp',

@@ -1,7 +1,7 @@
 import { expect, describe, test, beforeEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import fs from 'node:fs';
-import { ConvertInputSchema } from '../../schemas/convert';
+import { ConvertInputSchema } from '../../src/schemas/convert';
 import {
   buildAudioVideoSynthesisArgs,
   buildVisualizerSynthesisArgs,
@@ -9,22 +9,22 @@ import {
   probeMediaStreams,
   getMediaDuration,
   hexToFfmpegColor,
-} from '../../lib/ffmpeg';
-import { POST } from '../../app/api/convert/route';
-import * as tempExt from '../../lib/temp';
-import * as ffmpegExt from '../../lib/ffmpeg';
-import * as authExt from '../../lib/auth';
+} from '../../src/lib/ffmpeg';
+import { POST } from '../../src/app/api/convert/route';
+import * as tempExt from '../../src/lib/temp';
+import * as ffmpegExt from '../../src/lib/ffmpeg';
+import * as authExt from '../../src/lib/auth';
 
 // ── Mock Setup ────────────────────────────────────────────────────────────────
 
-vi.mock('../../lib/temp', () => ({
+vi.mock('../../src/lib/temp', () => ({
   writeInputFile: vi.fn(),
   cleanupJobDir: vi.fn(),
   createJobDir: vi.fn().mockReturnValue('/mock/tmp/job-a2v-123'),
   sanitizeFilename: vi.fn((f: string) => f.replace(/[^a-zA-Z0-9._-]/g, '_')),
 }));
 
-vi.mock('../../lib/ffmpeg', async (importOriginal) => {
+vi.mock('../../src/lib/ffmpeg', async (importOriginal) => {
   const actual: any = await importOriginal();
   return {
     ...actual,
@@ -34,7 +34,7 @@ vi.mock('../../lib/ffmpeg', async (importOriginal) => {
   };
 });
 
-vi.mock('../../lib/env', () => ({
+vi.mock('../../src/lib/env', () => ({
   env: {
     FFMPEG_PATH: '/mock/ffmpeg',
     YTDLP_PATH: '/mock/ytdlp',
@@ -43,7 +43,7 @@ vi.mock('../../lib/env', () => ({
   },
 }));
 
-vi.mock('../../lib/auth', () => ({
+vi.mock('../../src/lib/auth', () => ({
   verifyAuth: vi.fn().mockReturnValue({ userId: 'user_test_a2v' }),
   registerJobOwner: vi.fn(),
   verifyJobOwnership: vi.fn().mockReturnValue(true),

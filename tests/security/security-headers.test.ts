@@ -12,7 +12,7 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
 // ─── Environment mock ────────────────────────────────────────────────────────
-vi.mock('../../lib/env', () => ({
+vi.mock('../../src/lib/env', () => ({
   env: {
     FFMPEG_PATH: '/mock/ffmpeg',
     YTDLP_PATH: '/mock/ytdlp',
@@ -48,10 +48,10 @@ vi.mock('node:fs', () => {
 });
 
 // ─── Imports ─────────────────────────────────────────────────────────────────
-import { sanitizeError, sanitizeSseError } from '../../lib/errors';
-import { GET as downloadGET } from '../../app/api/download/route';
-import { GET as turboGET } from '../../app/api/experimental/turbo-download/route';
-import { registerJobOwner } from '../../lib/auth';
+import { sanitizeError, sanitizeSseError } from '../../src/lib/errors';
+import { GET as downloadGET } from '../../src/app/api/download/route';
+import { GET as turboGET } from '../../src/app/api/experimental/turbo-download/route';
+import { registerJobOwner } from '../../src/lib/auth';
 import nextConfig from '../../next.config.mjs';
 
 // ─── Tests ────────────────────────────────────────────────────────────────────

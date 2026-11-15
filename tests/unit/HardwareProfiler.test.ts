@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { getClientHardwareProfile, resetClientHardwareProfileCache, getMediaBatchLimit } from "../../lib/hardwareProfiler";
+import { getClientHardwareProfile, resetClientHardwareProfileCache, getMediaBatchLimit } from "../../src/lib/hardwareProfiler";
 
 describe("getClientHardwareProfile", () => {
   beforeEach(() => {

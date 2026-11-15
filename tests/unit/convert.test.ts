@@ -1,27 +1,27 @@
 import { expect, describe, test, vi, beforeEach } from 'vitest';
-import { POST } from '../../app/api/convert/route';
+import { POST } from '../../src/app/api/convert/route';
 import { NextRequest } from 'next/server';
 import fs from 'node:fs';
-import * as tempExt from '../../lib/temp';
-import * as ffmpegExt from '../../lib/ffmpeg';
+import * as tempExt from '../../src/lib/temp';
+import * as ffmpegExt from '../../src/lib/ffmpeg';
 
-vi.mock('../../lib/temp', () => ({
+vi.mock('../../src/lib/temp', () => ({
   writeInputFile: vi.fn(),
   cleanupJobDir: vi.fn(),
   createJobDir: vi.fn().mockReturnValue('/mock/convertPath')
 }));
 
-vi.mock('../../lib/env', () => ({
+vi.mock('../../src/lib/env', () => ({
   env: { FFMPEG_PATH: '/mock/ffmpeg', YTDLP_PATH: '/mock/ytdlp', TEMP_DIR: '/mock/tmp' }
 }));
 
-vi.mock('../../lib/ffmpeg', () => ({
+vi.mock('../../src/lib/ffmpeg', () => ({
   executeFfmpeg: vi.fn(),
   probeMediaStreams: vi.fn().mockResolvedValue({ hasVideo: true, hasAudio: true, videoCodec: 'h264', audioCodec: 'aac', duration: 10 }),
   getOptimalFfmpegThreads: vi.fn().mockReturnValue('2')
 }));
 
-vi.mock('../../lib/pdfRasterizer', () => ({
+vi.mock('../../src/lib/pdfRasterizer', () => ({
   isPdfFile: (name: string) => name.toLowerCase().endsWith('.pdf'),
   convertPdfToImage: vi.fn().mockResolvedValue(['/mock/convertPath/output.png']),
 }));

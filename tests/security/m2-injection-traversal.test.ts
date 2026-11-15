@@ -1,14 +1,14 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { sanitizeFilename, sanitizeJobId } from '../../lib/temp';
-import { SpotifyInputSchema } from '../../schemas/spotify';
-import { getPlaylistInfo, executeYtdlp } from '../../lib/ytdlp';
-import { GET as downloadGET } from '../../app/api/download/route';
-import { POST as spotifyPOST } from '../../app/api/spotify-convert/route';
-import { registerJobOwner } from '../../lib/auth';
+import { sanitizeFilename, sanitizeJobId } from '../../src/lib/temp';
+import { SpotifyInputSchema } from '../../src/schemas/spotify';
+import { getPlaylistInfo, executeYtdlp } from '../../src/lib/ytdlp';
+import { GET as downloadGET } from '../../src/app/api/download/route';
+import { POST as spotifyPOST } from '../../src/app/api/spotify-convert/route';
+import { registerJobOwner } from '../../src/lib/auth';
 import { NextRequest } from 'next/server';
 import * as childProcess from 'node:child_process';
 
-vi.mock('../../lib/env', () => ({
+vi.mock('../../src/lib/env', () => ({
   env: { FFMPEG_PATH: '/mock/ffmpeg', YTDLP_PATH: '/mock/ytdlp', TEMP_DIR: '/tmp/celestial-test-temp', JWT_SECRET: 'test-secret-that-is-at-least-32-chars-long!!' },
 }));
 

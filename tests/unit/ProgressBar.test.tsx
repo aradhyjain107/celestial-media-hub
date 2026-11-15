@@ -1,6 +1,6 @@
 import { render, screen, act } from '@testing-library/react';
 import { describe, expect, test, vi } from 'vitest';
-import { ProgressBar } from '../../app/components/ui/ProgressBar';
+import { ProgressBar } from '../../src/app/components/ui/ProgressBar';
 
 describe('ProgressBar', () => {
   test('renders manual progress and queue count', () => {

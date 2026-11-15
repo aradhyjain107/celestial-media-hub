@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { expect, test, vi, beforeEach, describe } from 'vitest';
-import UniversalConverter from '../../app/tools/converter/page';
-import { GlobalJobProvider } from '../../app/context/GlobalJobContext';
+import UniversalConverter from '../../src/app/tools/converter/page';
+import { GlobalJobProvider } from '../../src/app/context/GlobalJobContext';
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
