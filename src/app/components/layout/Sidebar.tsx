@@ -203,6 +203,27 @@ export function Sidebar() {
 
         <SidebarSupportTrigger />
 
+        <div
+          className="grid-line-top"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '8px',
+            padding: '10px 16px',
+          }}
+        >
+          <Link href="/about" className="tiny-label" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>
+            ABOUT
+          </Link>
+          <Link href="/contact" className="tiny-label" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>
+            CONTACT
+          </Link>
+          <Link href="/privacy" className="tiny-label" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>
+            PRIVACY
+          </Link>
+        </div>
+
         <div className="sidebar-footer grid-line-top">
           <span className="tiny-label">SYS.STATUS</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

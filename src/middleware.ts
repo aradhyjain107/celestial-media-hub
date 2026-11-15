@@ -1,9 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from './lib/security/auth';
 import { checkRateLimit, classifyRouteGroup, RATE_LIMIT_GROUPS } from './lib/security/ratelimit';
+import {
+  STATIC_OR_MACHINE_PATHS,
+  getPageMarkdown,
+  isKnownNonApiPath,
+  normalizePagePath,
+  prefersMarkdown,
+  renderNotFoundMarkdown,
+} from './lib/agent/siteContent';
 
 export const config = {
-  matcher: ['/api/:path*'],
+  matcher: [
+    '/api/:path*',
+    '/((?!_next/static|_next/image|favicon\\.svg|upi-qr\\.png|og-image\\.png|bootstrap-guard\\.js|hardware-probe-worker\\.js|status\\.html).*)',
+  ],
 };
 
 // Public endpoints that bypass global auth (e.g. health check endpoints)
@@ -27,8 +38,60 @@ function getClientIp(req: NextRequest): string {
   return ip;
 }
 
+function handleAgentContentNegotiation(req: NextRequest): NextResponse {
+  const { pathname } = req.nextUrl;
+  const normalizedPath = normalizePagePath(pathname);
+  const acceptHeader = req.headers.get('accept');
+
+  // Let machine-readable endpoints & static files handle their own Content-Type
+  if (STATIC_OR_MACHINE_PATHS.has(normalizedPath)) {
+    return NextResponse.next();
+  }
+
+  if ((req.method === 'GET' || req.method === 'HEAD') && prefersMarkdown(acceptHeader)) {
+    const markdown = getPageMarkdown(normalizedPath);
+    if (markdown) {
+      return new NextResponse(req.method === 'HEAD' ? null : markdown, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/markdown; charset=utf-8',
+          'Vary': 'Accept',
+          'Cache-Control': 'public, max-age=0, must-revalidate',
+        },
+      });
+    }
+
+    if (!isKnownNonApiPath(normalizedPath)) {
+      return new NextResponse(
+        req.method === 'HEAD' ? null : renderNotFoundMarkdown(pathname),
+        {
+          status: 404,
+          headers: {
+            'Content-Type': 'text/markdown; charset=utf-8',
+            'Vary': 'Accept',
+            'Cache-Control': 'no-store',
+          },
+        }
+      );
+    }
+  }
+
+  const res = NextResponse.next();
+  const existingVary = res.headers.get('Vary');
+  if (!existingVary) {
+    res.headers.set('Vary', 'Accept');
+  } else if (!existingVary.toLowerCase().includes('accept')) {
+    res.headers.set('Vary', `${existingVary}, Accept`);
+  }
+  return res;
+}
+
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  if (pathname !== '/api' && !pathname.startsWith('/api/')) {
+    return handleAgentContentNegotiation(req);
+  }
 
   // ── CORS & Preflight (OPTIONS) ─────────────────────────────────────────
   const origin = req.headers.get('origin');

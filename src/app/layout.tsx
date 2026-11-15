@@ -9,6 +9,7 @@ import { GlobalJobProvider } from './context/GlobalJobContext';
 import { ServerGuard } from './components/ui/ServerGuard';
 import { TooltipProvider } from './components/ui/Tooltip';
 import { CursorGlowController } from './components/ui/CursorGlowController';
+import { PRODUCT_KEYWORDS, getSiteIdentity, getSiteUrl } from '@/lib/agent/siteContent';
 
 const inter = localFont({
   src: './fonts/GeistVF.woff',
@@ -28,14 +29,47 @@ export const viewport: Viewport = {
   colorScheme: "dark",
 };
 
+const siteUrl = getSiteUrl();
+const identity = getSiteIdentity(siteUrl);
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
     template: '%s // CELESTIAL',
-    default: 'CELESTIAL // Media Hub',
+    default: identity.headline,
   },
-  description: 'Local-first media processing toolkit',
+  description: identity.description,
+  keywords: [...PRODUCT_KEYWORDS],
+  authors: [{ name: identity.creatorName, url: identity.repoUrl }],
+  creator: identity.creatorName,
+  publisher: identity.name,
   icons: {
     icon: '/favicon.svg',
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    siteName: identity.name,
+    title: identity.headline,
+    description: identity.description,
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: identity.headline,
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: identity.headline,
+    description: identity.description,
+    images: ['/og-image.png'],
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
 };
 

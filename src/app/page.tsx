@@ -3,11 +3,44 @@ import { DashboardGrid } from './components/DashboardGrid';
 import { MasterHeader } from './components/ui/MasterHeader';
 import { SpeedRecommendationMeter } from './components/ui/SpeedRecommendationMeter';
 import { SupportDonateFooter } from './components/ui/SupportDonate';
+import { StudioFooterLinks } from './components/ui/StudioFooterLinks';
+import {
+  PRODUCT_KEYWORDS,
+  buildHomepageStructuredData,
+  getSiteIdentity,
+  getSiteUrl,
+} from '@/lib/agent/siteContent';
 
 export const dynamic = 'force-dynamic';
 
+const siteUrl = getSiteUrl();
+const identity = getSiteIdentity(siteUrl);
+
 export const metadata: Metadata = {
-  title: 'Dashboard',
+  title: {
+    absolute: identity.headline,
+  },
+  description: identity.description,
+  keywords: [...PRODUCT_KEYWORDS],
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: '/',
+    siteName: identity.name,
+    title: identity.headline,
+    description: identity.description,
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: identity.headline,
+      },
+    ],
+  },
 };
 
 export default function Dashboard() {
@@ -20,8 +53,16 @@ export default function Dashboard() {
     { num: '07', name: 'Spotify Converter', desc: 'Extract high-bitrate audio from Spotify playlists, albums, and single tracks.', path: '/tools/spotify' }
   ];
 
+  const structuredData = buildHomepageStructuredData(getSiteUrl());
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(structuredData).replace(/</g, '\\u003c'),
+        }}
+      />
       <MasterHeader
         onlyUtilityBar
         toolName="SYSTEM DASHBOARD"
@@ -36,11 +77,13 @@ export default function Dashboard() {
             onlyToolHeader
             targetId="TARGET // 01"
             title={<>System<br/>Overview.</>}
+            subtitle="Celestial Media Hub — open-source FFmpeg media studio for universal media conversion, HEVC video compression, lossless video muting, precision audio trimming, and YouTube & Spotify audio extraction."
           />
           
           <SpeedRecommendationMeter />
           <DashboardGrid tools={tools} />
           <SupportDonateFooter />
+          <StudioFooterLinks />
         </div>
       </div>
     </>
