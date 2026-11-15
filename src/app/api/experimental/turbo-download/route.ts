@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { CelestialExtractor } from '../../../../lib/engine/extractor';
-import { CelestialStreamer } from '../../../../lib/engine/pipe';
-import { verifyAuth } from '../../../../lib/auth';
-import { sanitizeError } from '../../../../lib/errors';
+import { CelestialExtractor } from '../../../../lib/media/engine/extractor';
+import { CelestialStreamer } from '../../../../lib/media/engine/pipe';
+import { verifyAuth } from '../../../../lib/security/auth';
+import { sanitizeError } from '../../../../lib/security/errors';
 
 /** Allowed domain patterns for turbo-download (strict allowlist against SSRF / DNS rebinding) */
 const ALLOWED_DOMAINS = [

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { generateQrMatrix } from '../../../lib/qrcode';
+import { generateQrMatrix } from '../../../lib/utils/qrcode';
 
 const DEFAULT_UPI_ID = '8791979936@fam';
 const DEFAULT_UPI_PAYEE = 'Vaibhav Rawat';

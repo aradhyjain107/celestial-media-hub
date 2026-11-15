@@ -8,7 +8,7 @@ import {
   inspectBrowserHardware,
   recommendExecutionMode,
   runBrowserComputeBenchmark,
-} from '../../../lib/hardwareProfiler';
+} from '../../../lib/system/hardwareProfiler';
 
 function SvgIcon({ children, className = 'w-4 h-4' }: { children: React.ReactNode; className?: string }) {
   return (

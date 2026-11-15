@@ -7,16 +7,16 @@ import {
   buildVisualizerSynthesisArgs,
   buildAtempoFilter,
   getOptimalFfmpegThreads,
-} from '../../../lib/ffmpeg';
-import { writeInputFile, createJobDir, cleanupJobDir } from '../../../lib/temp';
-import { decideStrategy, buildStrategyArgs } from '../../../lib/remuxDecision';
+} from '../../../lib/media/ffmpeg';
+import { writeInputFile, createJobDir, cleanupJobDir } from '../../../lib/system/temp';
+import { decideStrategy, buildStrategyArgs } from '../../../lib/media/remuxDecision';
 import { randomUUID } from 'crypto';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
-import { verifyAuth, registerJobOwner } from '../../../lib/auth';
-import { sanitizeError, sanitizeSseError } from '../../../lib/errors';
-import { isPdfFile, convertPdfToImage } from '../../../lib/pdfRasterizer';
+import { verifyAuth, registerJobOwner } from '../../../lib/security/auth';
+import { sanitizeError, sanitizeSseError } from '../../../lib/security/errors';
+import { isPdfFile, convertPdfToImage } from '../../../lib/media/pdfRasterizer';
 
 export const dynamic = 'force-dynamic';
 

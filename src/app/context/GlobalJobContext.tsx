@@ -17,8 +17,8 @@ import React, {
   useState,
   useSyncExternalStore,
 } from 'react';
-import { HardwareProfile, getClientHardwareProfile, fetchNativeHardwareProfile } from '../../lib/hardwareProfiler';
-import { ensureSessionToken, appendAuthToken, getAuthTokenSync } from '../../lib/clientAuth';
+import { HardwareProfile, getClientHardwareProfile, fetchNativeHardwareProfile } from '../../lib/system/hardwareProfiler';
+import { ensureSessionToken, appendAuthToken, getAuthTokenSync } from '../../lib/security/clientAuth';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 

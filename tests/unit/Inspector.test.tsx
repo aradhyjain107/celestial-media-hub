@@ -3,8 +3,8 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { expect, describe, test, vi, beforeEach } from 'vitest';
 import { ResizableOptionsPanel } from '../../src/app/components/ui/ResizableOptionsPanel';
 import { MasterGlassCard } from '../../src/app/components/ui/MasterGlassCard';
-import { decideStrategy, buildStrategyArgs } from '../../src/lib/remuxDecision';
-import { getClientHardwareProfile } from '../../src/lib/hardwareProfiler';
+import { decideStrategy, buildStrategyArgs } from '../../src/lib/media/remuxDecision';
+import { getClientHardwareProfile } from '../../src/lib/system/hardwareProfiler';
 
 describe('Media Inspector & Inspection UI Suite', () => {
   beforeEach(() => {

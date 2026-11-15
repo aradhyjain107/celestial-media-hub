@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getServerHardwareProfile, resolveBatchLimit } from "../../src/lib/serverHardwareProfiler";
+import { getServerHardwareProfile, resolveBatchLimit } from "../../src/lib/system/serverHardwareProfiler";
 
 describe("Server Hardware Profiler & Precision Calibration Engine", () => {
   it("queries host OS and computes structured hardware profile with memory and CPU topology", async () => {

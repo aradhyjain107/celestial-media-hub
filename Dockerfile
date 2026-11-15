@@ -22,7 +22,7 @@ RUN npm ci
 # Copy application source
 COPY . .
 
-# Build production bundle (JWT_SECRET is validated by src/lib/env.ts during build)
+# Build production bundle (JWT_SECRET is validated by src/lib/system/env.ts during build)
 RUN JWT_SECRET="build-time-only-jwt-secret-min-32-chars-ok" npm run build \
   && npm prune --omit=dev
 

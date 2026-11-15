@@ -9,11 +9,11 @@
 import { describe, it, test, expect, vi, beforeEach } from 'vitest';
 import { POST } from '../../src/app/api/convert/route';
 import { ConvertInputSchema } from '../../src/schemas/convert';
-import { executeFfmpeg, probeMediaStreams, getMediaDuration, buildAudioVideoSynthesisArgs, buildVisualizerSynthesisArgs } from '../../src/lib/ffmpeg';
-import { decideStrategy, buildStrategyArgs } from '../../src/lib/remuxDecision';
-import * as tempExt from '../../src/lib/temp';
-import * as ffmpegExt from '../../src/lib/ffmpeg';
-import * as authExt from '../../src/lib/auth';
+import { executeFfmpeg, probeMediaStreams, getMediaDuration, buildAudioVideoSynthesisArgs, buildVisualizerSynthesisArgs } from '../../src/lib/media/ffmpeg';
+import { decideStrategy, buildStrategyArgs } from '../../src/lib/media/remuxDecision';
+import * as tempExt from '../../src/lib/system/temp';
+import * as ffmpegExt from '../../src/lib/media/ffmpeg';
+import * as authExt from '../../src/lib/security/auth';
 import { NextRequest } from 'next/server';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -26,13 +26,13 @@ if (!File.prototype.arrayBuffer) {
 }
 
 // ── Hoisted Mocks ──
-vi.mock('../../src/lib/temp', () => ({
+vi.mock('../../src/lib/system/temp', () => ({
   writeInputFile: vi.fn(),
   cleanupJobDir: vi.fn(),
   createJobDir: vi.fn().mockReturnValue('/mock/a2v_job_dir'),
 }));
 
-vi.mock('../../src/lib/env', () => ({
+vi.mock('../../src/lib/system/env', () => ({
   env: {
     FFMPEG_PATH: '/mock/ffmpeg',
     YTDLP_PATH: '/mock/ytdlp',
@@ -41,7 +41,7 @@ vi.mock('../../src/lib/env', () => ({
   },
 }));
 
-vi.mock('../../src/lib/ffmpeg', async (importOriginal) => {
+vi.mock('../../src/lib/media/ffmpeg', async (importOriginal) => {
   const actual: any = await importOriginal();
   return {
     ...actual,
@@ -53,7 +53,7 @@ vi.mock('../../src/lib/ffmpeg', async (importOriginal) => {
   };
 });
 
-vi.mock('../../src/lib/auth', () => ({
+vi.mock('../../src/lib/security/auth', () => ({
   verifyAuth: vi.fn().mockReturnValue({ userId: 'test-user-boundary', role: 'user', token: 'valid-test-token', iat: 1000 }),
   registerJobOwner: vi.fn(),
   unregisterJobOwner: vi.fn(),

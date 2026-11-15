@@ -10,7 +10,7 @@
 
 import os from "node:os";
 import { execSync } from "node:child_process";
-import { isEncoderAvailable } from "./ffmpeg";
+import { isEncoderAvailable } from "../media/ffmpeg";
 
 export type MediaCategory = "VIDEO" | "AUDIO" | "PHOTO";
 

@@ -1,12 +1,12 @@
 import { expect, describe, test, vi, beforeEach } from 'vitest';
 import { GET } from '../../src/app/api/experimental/turbo-download/route';
 import { NextRequest } from 'next/server';
-import { CelestialExtractor } from '../../src/lib/engine/extractor';
-import { CelestialStreamer } from '../../src/lib/engine/pipe';
+import { CelestialExtractor } from '../../src/lib/media/engine/extractor';
+import { CelestialStreamer } from '../../src/lib/media/engine/pipe';
 import { PassThrough } from 'node:stream';
 
-vi.mock('../../src/lib/engine/extractor');
-vi.mock('../../src/lib/engine/pipe');
+vi.mock('../../src/lib/media/engine/extractor');
+vi.mock('../../src/lib/media/engine/pipe');
 
 describe('GET /api/experimental/turbo-download — Unit Test Suite', () => {
   beforeEach(() => {

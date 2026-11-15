@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'node:fs';
 import path from 'node:path';
-import { env } from '../../../lib/env';
-import { cleanupJobDir } from '../../../lib/temp';
-import { verifyAuth, verifyJobOwnership, unregisterJobOwner } from '../../../lib/auth';
-import { sanitizeError } from '../../../lib/errors';
+import { env } from '../../../lib/system/env';
+import { cleanupJobDir } from '../../../lib/system/temp';
+import { verifyAuth, verifyJobOwnership, unregisterJobOwner } from '../../../lib/security/auth';
+import { sanitizeError } from '../../../lib/security/errors';
 
 export const dynamic = 'force-dynamic';
 

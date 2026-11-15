@@ -38,10 +38,10 @@ import {
   cleanupJobDir,
   writeInputFile,
   sanitizeJobId
-} from '../../src/lib/temp';
-import { executeFfmpeg } from '../../src/lib/ffmpeg';
-import { executeYtdlp } from '../../src/lib/ytdlp';
-import { env } from '../../src/lib/env';
+} from '../../src/lib/system/temp';
+import { executeFfmpeg } from '../../src/lib/media/ffmpeg';
+import { executeYtdlp } from '../../src/lib/media/ytdlp';
+import { env } from '../../src/lib/system/env';
 
 import {
   GlobalJobProvider,

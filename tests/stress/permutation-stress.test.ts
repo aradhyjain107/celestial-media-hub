@@ -7,24 +7,24 @@ import {
   startTempDirSweeper,
   sanitizeFilename,
   sanitizeJobId
-} from '../../src/lib/temp';
+} from '../../src/lib/system/temp';
 import { POST as mutePOST } from '../../src/app/api/mute/route';
 import { POST as compressPOST } from '../../src/app/api/compress/route';
 import { POST as convertPOST } from '../../src/app/api/convert/route';
 import { POST as audioTrimPOST } from '../../src/app/api/audio-trim/route';
 import { POST as spotifyRetryPOST } from '../../src/app/api/spotify-convert/retry/route';
 import { GET as turboDownloadGET } from '../../src/app/api/experimental/turbo-download/route';
-import * as ffmpegExt from '../../src/lib/ffmpeg';
-import * as authExt from '../../src/lib/auth';
+import * as ffmpegExt from '../../src/lib/media/ffmpeg';
+import * as authExt from '../../src/lib/security/auth';
 import { Readable, PassThrough } from 'node:stream';
-import { CelestialExtractor } from '../../src/lib/engine/extractor';
-import { CelestialStreamer } from '../../src/lib/engine/pipe';
+import { CelestialExtractor } from '../../src/lib/media/engine/extractor';
+import { CelestialStreamer } from '../../src/lib/media/engine/pipe';
 
-vi.mock('../../src/lib/env', () => ({
+vi.mock('../../src/lib/system/env', () => ({
   env: { TEMP_DIR: '/mock/temp' }
 }));
 
-vi.mock('../../src/lib/ffmpeg', () => ({
+vi.mock('../../src/lib/media/ffmpeg', () => ({
   executeFfmpeg: vi.fn(),
   probeMediaStreams: vi.fn().mockResolvedValue({ hasVideo: true, hasAudio: true, duration: 10 }),
   getMediaDuration: vi.fn().mockResolvedValue(10),
@@ -32,8 +32,8 @@ vi.mock('../../src/lib/ffmpeg', () => ({
   getOptimalFfmpegThreads: vi.fn().mockReturnValue('2'),
 }));
 
-vi.mock('../../src/lib/engine/extractor');
-vi.mock('../../src/lib/engine/pipe');
+vi.mock('../../src/lib/media/engine/extractor');
+vi.mock('../../src/lib/media/engine/pipe');
 
 describe('Milestone M3 — Exhaustive Permutation & Stress Testing Suite', () => {
   beforeEach(() => {

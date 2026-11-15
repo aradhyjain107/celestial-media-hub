@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { PassThrough, Readable } from 'node:stream';
-import { env } from '../env';
+import { env } from '../../system/env';
 
 interface StreamSource {
   url: string;

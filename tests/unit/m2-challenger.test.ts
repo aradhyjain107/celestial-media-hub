@@ -6,7 +6,7 @@ import { execSync } from 'child_process';
 
 const SCRATCH_DIR = path.join(os.tmpdir(), 'celestial-m2-challenger-scratch');
 
-vi.mock('../../src/lib/env', () => ({
+vi.mock('../../src/lib/system/env', () => ({
   env: {
     FFMPEG_PATH: process.env.FFMPEG_PATH || '/opt/homebrew/bin/ffmpeg',
     YTDLP_PATH: process.env.YTDLP_PATH || 'yt-dlp',

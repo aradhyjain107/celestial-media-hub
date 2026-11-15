@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { splitFilename } from '../../../lib/filename';
+import { splitFilename } from '../../../lib/utils/filename';
 import { useJob, useHardwareProfile } from '../../context/GlobalJobContext';
 import { FileDropzone } from '../../components/ui/FileDropzone';
 import { BatchQueue, QueueItem } from '../../components/BatchQueue';
@@ -12,9 +12,9 @@ import { TooltipRight, TooltipTop, TooltipBottom } from '../../components/ui/Too
 import { AudioToVideoStudio } from './components/AudioToVideoStudio';
 import { HardwareBadge } from '../../components/ui/HardwareBadge';
 import { MasterHeader } from '../../components/ui/MasterHeader';
-import { getMediaBatchLimit, getClientHardwareProfile, HardwareProfile } from '../../../lib/hardwareProfiler';
-import { safeFetch } from '../../../lib/safeFetch';
-import { ensureSessionToken, appendAuthToken, useSessionToken } from '../../../lib/clientAuth';
+import { getMediaBatchLimit, getClientHardwareProfile, HardwareProfile } from '../../../lib/system/hardwareProfiler';
+import { safeFetch } from '../../../lib/security/safeFetch';
+import { ensureSessionToken, appendAuthToken, useSessionToken } from '../../../lib/security/clientAuth';
 
 /* ── Format definitions ── */
 const VIDEO_FORMATS = ['mp4', 'mkv', 'mov', 'webm', 'gif'] as const;

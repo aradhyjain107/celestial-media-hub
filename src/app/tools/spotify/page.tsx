@@ -17,8 +17,8 @@ const FORMATS = ['mp3', 'm4a', 'wav'] as const;
 const QUALITIES = ['128', '192', '256', '320'] as const;
 
 import { useJob } from '../../context/GlobalJobContext';
-import { safeFetch } from '../../../lib/safeFetch';
-import { ensureSessionToken, appendAuthToken, useSessionToken } from '../../../lib/clientAuth';
+import { safeFetch } from '../../../lib/security/safeFetch';
+import { ensureSessionToken, appendAuthToken, useSessionToken } from '../../../lib/security/clientAuth';
 
 export default function SpotifyConverter() {
   const { jobState, startJob, updateJob, clearJob } = useJob('spotify');

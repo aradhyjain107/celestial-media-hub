@@ -6,7 +6,7 @@ import {
   recommendExecutionMode,
   type ClientHardwareSnapshot,
   type HardwareProfile,
-} from '../../src/lib/hardwareProfiler';
+} from '../../src/lib/system/hardwareProfiler';
 import { SpeedRecommendationMeter } from '../../src/app/components/ui/SpeedRecommendationMeter';
 
 vi.mock('../../src/app/context/GlobalJobContext', () => ({

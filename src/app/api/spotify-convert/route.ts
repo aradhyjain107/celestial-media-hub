@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SpotifyInputSchema } from '../../../schemas/spotify';
-import { executeYtdlp } from '../../../lib/ytdlp';
-import { createJobDir, cleanupJobDir } from '../../../lib/temp';
+import { executeYtdlp } from '../../../lib/media/ytdlp';
+import { createJobDir, cleanupJobDir } from '../../../lib/system/temp';
 import { randomUUID } from 'crypto';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { verifyAuth, registerJobOwner, verifyJobOwnership } from '../../../lib/auth';
-import { sanitizeError, sanitizeSseError } from '../../../lib/errors';
+import { verifyAuth, registerJobOwner, verifyJobOwnership } from '../../../lib/security/auth';
+import { sanitizeError, sanitizeSseError } from '../../../lib/security/errors';
 
 export const dynamic = 'force-dynamic';
 

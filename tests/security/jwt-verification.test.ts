@@ -21,7 +21,7 @@ import {
 import { createHmac } from 'node:crypto';
 
 // ─── Environment mock — must set JWT_SECRET before any auth imports ───────────
-vi.mock('../../src/lib/env', () => ({
+vi.mock('../../src/lib/system/env', () => ({
   env: {
     FFMPEG_PATH: '/mock/ffmpeg',
     YTDLP_PATH: '/mock/ytdlp',
@@ -33,7 +33,7 @@ vi.mock('../../src/lib/env', () => ({
 // Set env vars for jose (reads from process.env directly)
 process.env.JWT_SECRET = TEST_SECRET;
 
-import { verifyAuth, verifyAuthAsync } from '../../src/lib/auth';
+import { verifyAuth, verifyAuthAsync } from '../../src/lib/security/auth';
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAuth } from './lib/auth';
-import { checkRateLimit, classifyRouteGroup, RATE_LIMIT_GROUPS } from './lib/ratelimit';
+import { verifyAuth } from './lib/security/auth';
+import { checkRateLimit, classifyRouteGroup, RATE_LIMIT_GROUPS } from './lib/security/ratelimit';
 
 export const config = {
   matcher: ['/api/:path*'],

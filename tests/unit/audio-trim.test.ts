@@ -2,15 +2,15 @@ import { expect, describe, test, vi, beforeEach } from 'vitest';
 import { POST } from '../../src/app/api/audio-trim/route';
 import { NextRequest } from 'next/server';
 import fs from 'node:fs';
-import * as tempExt from '../../src/lib/temp';
-import * as ffmpegExt from '../../src/lib/ffmpeg';
+import * as tempExt from '../../src/lib/system/temp';
+import * as ffmpegExt from '../../src/lib/media/ffmpeg';
 
-vi.mock('../../src/lib/temp', () => ({
+vi.mock('../../src/lib/system/temp', () => ({
   writeInputFile: vi.fn(),
   cleanupJobDir: vi.fn(),
   createJobDir: vi.fn().mockReturnValue('/mock/trimPath')
 }));
-vi.mock('../../src/lib/ffmpeg', () => ({
+vi.mock('../../src/lib/media/ffmpeg', () => ({
   executeFfmpeg: vi.fn(),
   getMediaDuration: vi.fn().mockResolvedValue(10)
 }));

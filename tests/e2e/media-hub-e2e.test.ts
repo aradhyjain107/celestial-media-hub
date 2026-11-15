@@ -123,7 +123,7 @@ import {
   buildStrategyArgs,
   ConversionOptions,
   StreamInfo,
-} from '../../src/lib/remuxDecision';
+} from '../../src/lib/media/remuxDecision';
 
 import {
   executeFfmpeg,
@@ -132,7 +132,7 @@ import {
   buildAudioVideoSynthesisArgs,
   buildVisualizerSynthesisArgs,
   isEncoderAvailable,
-} from '../../src/lib/ffmpeg';
+} from '../../src/lib/media/ffmpeg';
 
 import {
   startTempDirSweeper,
@@ -141,11 +141,11 @@ import {
   writeInputFile,
   sanitizeJobId,
   sanitizeFilename,
-} from '../../src/lib/temp';
+} from '../../src/lib/system/temp';
 
-import { CelestialStreamer } from '../../src/lib/engine/pipe';
-import { registerJobOwner, unregisterJobOwner, verifyJobOwnership } from '../../src/lib/auth';
-import { env } from '../../src/lib/env';
+import { CelestialStreamer } from '../../src/lib/media/engine/pipe';
+import { registerJobOwner, unregisterJobOwner, verifyJobOwnership } from '../../src/lib/security/auth';
+import { env } from '../../src/lib/system/env';
 
 import { ConvertInputSchema } from '../../src/schemas/convert';
 import { HevcInputSchema } from '../../src/schemas/hevc';

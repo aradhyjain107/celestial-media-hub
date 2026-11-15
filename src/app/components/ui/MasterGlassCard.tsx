@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { useCursorGlowHandlers } from '../../../lib/useCursorGlow';
+import { useCursorGlowHandlers } from '../../../lib/utils/useCursorGlow';
 
 export interface MasterGlassCardProps {
   children: React.ReactNode;

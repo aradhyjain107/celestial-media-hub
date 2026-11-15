@@ -157,14 +157,23 @@ Celestial Media Hub is hardened in compliance with the **Invicti Vibe Coding Sec
 ## Project Layout
 
 ```text
-├── src/
-│   ├── app/          # Next.js App Router pages, UI components, and API routes
-│   ├── lib/          # FFmpeg, yt-dlp, JWT/auth, rate limiter, and hardware profiler
-│   ├── schemas/      # Zod validation schemas
-│   └── middleware.ts # Edge CORS, Fetch Metadata, rate limit, and auth enforcement
-├── public/           # Static assets & Web Worker silicon probe
+├── .github/
+│   ├── workflows/    # CI (ci.yml) & Hugging Face Space sync (sync-hf-space.yml)
+│   ├── CONTRIBUTING.md
+│   └── SECURITY.md
+├── public/           # Static assets, UPI QR, & Web Worker silicon probe
 ├── scripts/          # Docker entrypoint & optional macOS PDF rasterizer helper
-├── tests/            # Unit, security, E2E, visual, and stress test suites
+├── src/
+│   ├── app/          # Next.js App Router pages, UI components, & API routes
+│   ├── lib/
+│   │   ├── media/    # FFmpeg, yt-dlp, remux planner, PDF rasterizer, & mux engine
+│   │   ├── security/ # JWT auth, BOLA ownership, rate limiting, error sanitization, SSRF
+│   │   ├── system/   # Env validation, temp workspaces, & hardware/silicon profilers
+│   │   └── utils/    # Filename helpers, QR encoder, & UI cursor hook
+│   ├── schemas/      # Zod validation schemas per endpoint
+│   └── middleware.ts # Edge CORS, Fetch Metadata, rate limit, & auth guard
+├── tests/            # Unit, security, E2E, visual, & stress test suites
+├── AGENTS.md         # Architecture & workflow guide for AI agents
 ├── Dockerfile
 └── next.config.mjs
 ```

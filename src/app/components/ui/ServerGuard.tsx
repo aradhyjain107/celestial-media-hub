@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback, useId } from 'react';
 
-import { safeFetch } from '../../../lib/safeFetch';
+import { safeFetch } from '../../../lib/security/safeFetch';
 
 const HEALTH_ENDPOINT = '/api/health';
 const PING_INTERVAL_MS = 10_000;   // check every 10s

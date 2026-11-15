@@ -2,8 +2,8 @@ import { expect, describe, test, vi, beforeEach } from 'vitest';
 import { POST } from '../../src/app/api/spotify-convert/route';
 import { NextRequest } from 'next/server';
 import fs from 'node:fs';
-import * as tempExt from '../../src/lib/temp';
-import * as ytdlpExt from '../../src/lib/ytdlp';
+import * as tempExt from '../../src/lib/system/temp';
+import * as ytdlpExt from '../../src/lib/media/ytdlp';
 
 const { mockExecSync, mockExecFileSync } = vi.hoisted(() => ({ mockExecSync: vi.fn(), mockExecFileSync: vi.fn() }));
 
@@ -12,11 +12,11 @@ vi.mock('node:child_process', async (importOriginal) => {
   return { ...actual, execSync: mockExecSync, execFileSync: mockExecFileSync, default: { ...actual.default, execSync: mockExecSync, execFileSync: mockExecFileSync } };
 });
 
-vi.mock('../../src/lib/temp', () => ({
+vi.mock('../../src/lib/system/temp', () => ({
   cleanupJobDir: vi.fn(),
   createJobDir: vi.fn().mockImplementation((id: string) => `/mock/spot/${id.includes('dummy') ? 'dummy' : ''}`.replace(/\/$/, ''))
 }));
-vi.mock('../../src/lib/ytdlp', () => ({ executeYtdlp: vi.fn() }));
+vi.mock('../../src/lib/media/ytdlp', () => ({ executeYtdlp: vi.fn() }));
 
 describe('/api/spotify-convert POST', () => {
   beforeEach(() => { 

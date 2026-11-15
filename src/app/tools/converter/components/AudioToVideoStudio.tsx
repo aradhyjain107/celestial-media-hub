@@ -8,7 +8,7 @@ import { VideoAttachmentDropzone } from './VideoAttachmentDropzone';
 import { VideoPreviewCanvas } from './VideoPreviewCanvas';
 import { KineticBackdropVisualizer } from './KineticBackdropVisualizer';
 import { VideoTrimmerTimeline } from './VideoTrimmerTimeline';
-import { appendAuthToken, useSessionToken } from '../../../../lib/clientAuth';
+import { appendAuthToken, useSessionToken } from '../../../../lib/security/clientAuth';
 
 export interface AudioToVideoStudioProps {
   /** The primary audio file loaded in converter */

@@ -12,8 +12,8 @@ import { generateWaveform, WaveformResult } from '../../components/waveform/Wave
 import { TooltipTop } from '../../components/ui/Tooltip';
 import { MasterHeader } from '../../components/ui/MasterHeader';
 import { MasterOptionGrid, OptionItem } from '../../components/ui/MasterOptionGrid';
-import { safeFetch } from '../../../lib/safeFetch';
-import { ensureSessionToken, appendAuthToken, useSessionToken } from '../../../lib/clientAuth';
+import { safeFetch } from '../../../lib/security/safeFetch';
+import { ensureSessionToken, appendAuthToken, useSessionToken } from '../../../lib/security/clientAuth';
 
 // Helper to read a File as ArrayBuffer
 const readFileAsArrayBuffer = (file: File): Promise<ArrayBuffer> => {

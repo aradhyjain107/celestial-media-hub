@@ -134,7 +134,7 @@ export async function fetchNativeHardwareProfile(): Promise<HardwareProfile> {
   }
 
   try {
-    const { safeFetch } = await import("./safeFetch");
+    const { safeFetch } = await import("../security/safeFetch");
     const res = await safeFetch("/api/system/hardware");
     if (!res.ok) throw new Error("Hardware telemetry request failed");
     const json = await res.json();

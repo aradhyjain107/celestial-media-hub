@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { splitFilename } from '../../../../lib/filename';
+import { splitFilename } from '../../../../lib/utils/filename';
 import { MasterGlassCard } from '../../../components/ui/MasterGlassCard';
 import { MasterMicroBadge } from '../../../components/ui/MasterMicroBadge';
 

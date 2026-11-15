@@ -7,7 +7,7 @@ import {
   canTrackCursorGlow,
   syncCursorGlowEnter,
   syncCursorGlowMove,
-} from '../../../lib/useCursorGlow';
+} from '../../../lib/utils/useCursorGlow';
 
 /**
  * Delegated fine-pointer spotlight tracker that updates `--mouse-x`/`--mouse-y`

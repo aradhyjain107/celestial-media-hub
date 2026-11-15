@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAuth, verifyJobOwnership } from '../../../../lib/auth';
-import { sanitizeError } from '../../../../lib/errors';
+import { verifyAuth, verifyJobOwnership } from '../../../../lib/security/auth';
+import { sanitizeError } from '../../../../lib/security/errors';
 
 export const dynamic = 'force-dynamic';
 

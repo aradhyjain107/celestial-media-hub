@@ -7,7 +7,7 @@ import { CursorGlowController } from '../../src/app/components/ui/CursorGlowCont
 import { HardwareBadge } from '../../src/app/components/ui/HardwareBadge';
 import { ServerGuard } from '../../src/app/components/ui/ServerGuard';
 import { GlobalJobProvider } from '../../src/app/context/GlobalJobContext';
-import * as hwProfiler from '../../src/lib/hardwareProfiler';
+import * as hwProfiler from '../../src/lib/system/hardwareProfiler';
 
 vi.mock('next/link', () => ({
   default: ({ href, children, ...props }: any) => (

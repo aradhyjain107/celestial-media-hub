@@ -4,12 +4,12 @@ import { useState, useMemo, useEffect, useRef, useId } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { FileDropzone } from '../../components/ui/FileDropzone';
 import { useJob, useHardwareProfile, safeCreateObjectURL, safeRevokeObjectURL } from '../../context/GlobalJobContext';
-import { getMediaBatchLimit } from '../../../lib/hardwareProfiler';
+import { getMediaBatchLimit } from '../../../lib/system/hardwareProfiler';
 import { ResizableOptionsPanel } from '../../components/ui/ResizableOptionsPanel';
 import { TooltipTop, TooltipBottom } from '../../components/ui/Tooltip';
 import { MasterHeader } from '../../components/ui/MasterHeader';
-import { safeFetch } from '../../../lib/safeFetch';
-import { ensureSessionToken, appendAuthToken, useSessionToken } from '../../../lib/clientAuth';
+import { safeFetch } from '../../../lib/security/safeFetch';
+import { ensureSessionToken, appendAuthToken, useSessionToken } from '../../../lib/security/clientAuth';
 
 function formatSize(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';

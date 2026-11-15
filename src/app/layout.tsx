@@ -4,7 +4,7 @@ import localFont from 'next/font/local';
 import './globals.css';
 import { Sidebar } from './components/layout/Sidebar';
 import { PageTransition } from './components/layout/PageTransition';
-import { ErrorBoundary } from './components/lib/ErrorBoundary';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { GlobalJobProvider } from './context/GlobalJobContext';
 import { ServerGuard } from './components/ui/ServerGuard';
 import { TooltipProvider } from './components/ui/Tooltip';

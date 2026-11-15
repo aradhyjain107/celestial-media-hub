@@ -3,12 +3,12 @@ import { GET } from '../../src/app/api/download/route';
 import { NextRequest } from 'next/server';
 import fs from 'node:fs';
 import path from 'node:path';
-import { env } from '../../src/lib/env';
-import * as authExt from '../../src/lib/auth';
-import * as tempExt from '../../src/lib/temp';
+import { env } from '../../src/lib/system/env';
+import * as authExt from '../../src/lib/security/auth';
+import * as tempExt from '../../src/lib/system/temp';
 import EventEmitter from 'node:events';
 
-vi.mock('../../src/lib/temp', () => ({
+vi.mock('../../src/lib/system/temp', () => ({
   cleanupJobDir: vi.fn(),
   createJobDir: vi.fn(),
   sanitizeJobId: vi.fn((id: string) => id),

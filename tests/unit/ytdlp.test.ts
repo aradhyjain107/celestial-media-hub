@@ -1,5 +1,5 @@
 import { expect, describe, test, vi, beforeEach } from 'vitest';
-import { executeYtdlp, getPlaylistInfo } from '../../src/lib/ytdlp';
+import { executeYtdlp, getPlaylistInfo } from '../../src/lib/media/ytdlp';
 import fs from 'node:fs';
 import { EventEmitter } from 'events';
 
@@ -12,7 +12,7 @@ vi.mock('node:child_process', async (importOriginal) => {
   return { ...actual, spawn: mockSpawn, default: { ...actual.default, spawn: mockSpawn } };
 });
 
-vi.mock('../../src/lib/env', () => ({ env: { YTDLP_PATH: '/mock/ytdlp' } }));
+vi.mock('../../src/lib/system/env', () => ({ env: { YTDLP_PATH: '/mock/ytdlp' } }));
 
 describe('executeYtdlp and getPlaylistInfo', () => {
   beforeEach(() => { vi.clearAllMocks(); });

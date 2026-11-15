@@ -1,5 +1,5 @@
 import { expect, describe, test, beforeEach, afterEach } from 'vitest';
-import { isPdfFile, convertPdfToImage } from '../../src/lib/pdfRasterizer';
+import { isPdfFile, convertPdfToImage } from '../../src/lib/media/pdfRasterizer';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

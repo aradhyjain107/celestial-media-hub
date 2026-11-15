@@ -6,7 +6,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { ResizableOptionsPanel } from '../../components/ui/ResizableOptionsPanel';
 import { TooltipRight } from '../../components/ui/Tooltip';
 import { MasterHeader } from '../../components/ui/MasterHeader';
-import { safeFetch } from '../../../lib/safeFetch';
+import { safeFetch } from '../../../lib/security/safeFetch';
 
 /* ── Format / Quality definitions ── */
 const FORMATS = ['mp3', 'm4a', 'wav', 'mp4'] as const;
@@ -40,7 +40,7 @@ const HISTORY_KEY = 'celestial-yt-history';
 
 import { isValidMediaUrl, detectMediaPlatform } from '../../../schemas/youtube';
 import { useJob } from '../../context/GlobalJobContext';
-import { ensureSessionToken, appendAuthToken, useSessionToken } from '../../../lib/clientAuth';
+import { ensureSessionToken, appendAuthToken, useSessionToken } from '../../../lib/security/clientAuth';
 
 export default function YouTubeDownloader() {
   const { jobState, startJob, updateJob, clearJob } = useJob('youtube');

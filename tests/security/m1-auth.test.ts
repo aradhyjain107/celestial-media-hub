@@ -1,11 +1,11 @@
 import { describe, test, expect, vi } from 'vitest';
 
-vi.mock('../../src/lib/env', () => ({
+vi.mock('../../src/lib/system/env', () => ({
   env: { FFMPEG_PATH: '/mock/ffmpeg', YTDLP_PATH: '/mock/ytdlp', TEMP_DIR: '/mock/tmp', JWT_SECRET: 'test-secret-that-is-at-least-32-chars-long!!' },
 }));
 
 import { NextRequest } from 'next/server';
-import { verifyAuth, registerJobOwner, verifyJobOwnership, AuthSession } from '../../src/lib/auth';
+import { verifyAuth, registerJobOwner, verifyJobOwnership, AuthSession } from '../../src/lib/security/auth';
 import { middleware } from '../../src/middleware';
 import { GET as downloadGET } from '../../src/app/api/download/route';
 import { GET as spotifyGET } from '../../src/app/api/spotify-convert/route';

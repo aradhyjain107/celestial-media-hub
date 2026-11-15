@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 
-vi.mock('../../src/lib/env', () => ({
+vi.mock('../../src/lib/system/env', () => ({
   env: {
     FFMPEG_PATH: process.env.FFMPEG_PATH || '/opt/homebrew/bin/ffmpeg',
     YTDLP_PATH: process.env.YTDLP_PATH || '/Library/Frameworks/Python.framework/Versions/3.13/bin/yt-dlp',
@@ -19,7 +19,7 @@ import { POST as convertPOST } from '../../src/app/api/convert/route';
 import { POST as youtubePOST } from '../../src/app/api/youtube/route';
 import { POST as audioTrimPOST } from '../../src/app/api/audio-trim/route';
 import { POST as spotifyPOST } from '../../src/app/api/spotify-convert/route';
-import { env } from '../../src/lib/env';
+import { env } from '../../src/lib/system/env';
 
 console.error('MOCKED ENV IN TEST:', env);
 

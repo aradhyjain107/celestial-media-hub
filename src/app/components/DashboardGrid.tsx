@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { motion, Variants, useReducedMotion } from 'framer-motion';
-import { useCursorGlowHandlers } from '../../lib/useCursorGlow';
+import { useCursorGlowHandlers } from '../../lib/utils/useCursorGlow';
 
 interface ToolItem {
   num: string;

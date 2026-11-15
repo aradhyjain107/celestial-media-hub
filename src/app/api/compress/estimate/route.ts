@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { executeFfmpeg, probeMediaStreams, isEncoderAvailable } from '../../../../lib/ffmpeg';
-import { createJobDir, cleanupJobDir } from '../../../../lib/temp';
-import { verifyAuth } from '../../../../lib/auth';
-import { sanitizeError } from '../../../../lib/errors';
+import { executeFfmpeg, probeMediaStreams, isEncoderAvailable } from '../../../../lib/media/ffmpeg';
+import { createJobDir, cleanupJobDir } from '../../../../lib/system/temp';
+import { verifyAuth } from '../../../../lib/security/auth';
+import { sanitizeError } from '../../../../lib/security/errors';
 import { randomUUID, createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';

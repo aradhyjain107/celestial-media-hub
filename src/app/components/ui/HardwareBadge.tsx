@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { getClientHardwareProfile, HardwareProfile } from '../../../lib/hardwareProfiler';
+import { getClientHardwareProfile, HardwareProfile } from '../../../lib/system/hardwareProfiler';
 import { useHardwareProfile } from '../../context/GlobalJobContext';
 import { motion, useReducedMotion } from 'framer-motion';
 import { TooltipBottom } from './Tooltip';

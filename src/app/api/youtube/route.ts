@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { YoutubeInputSchema, isValidMediaUrl, detectMediaPlatform } from '../../../schemas/youtube';
-import { executeYtdlp, getVideoInfo, getPlaylistInfo } from '../../../lib/ytdlp';
-import { createJobDir, cleanupJobDir } from '../../../lib/temp';
+import { executeYtdlp, getVideoInfo, getPlaylistInfo } from '../../../lib/media/ytdlp';
+import { createJobDir, cleanupJobDir } from '../../../lib/system/temp';
 import { randomUUID } from 'crypto';
 import path from 'node:path';
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { verifyAuth, registerJobOwner } from '../../../lib/auth';
-import { sanitizeError, sanitizeSseError } from '../../../lib/errors';
+import { verifyAuth, registerJobOwner } from '../../../lib/security/auth';
+import { sanitizeError, sanitizeSseError } from '../../../lib/security/errors';
 
 export const dynamic = 'force-dynamic';
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getServerHardwareProfile } from "../../../../lib/serverHardwareProfiler";
-import { sanitizeError } from "../../../../lib/errors";
+import { getServerHardwareProfile } from "../../../../lib/system/serverHardwareProfiler";
+import { sanitizeError } from "../../../../lib/security/errors";
 
 export const dynamic = "force-dynamic";
 

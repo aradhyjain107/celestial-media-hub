@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { executeFfmpeg } from '../../src/lib/ffmpeg';
+import { executeFfmpeg } from '../../src/lib/media/ffmpeg';
 import fs from 'node:fs';
 
 describe('Real OS Child Process Lifecycle Audit', () => {

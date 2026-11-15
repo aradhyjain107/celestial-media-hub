@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { signToken, verifyToken } from '@/lib/jwt';
+import { signToken, verifyToken } from '@/lib/security/jwt';
 
 /**
  * Issues or reuses an anonymous session HS256 JWT so public web visitors

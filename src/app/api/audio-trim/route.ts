@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TrimInputSchema } from '../../../schemas/trim';
-import { executeFfmpeg, getMediaDuration, probeMediaStreams } from '../../../lib/ffmpeg';
-import { writeInputFile, createJobDir, cleanupJobDir } from '../../../lib/temp';
+import { executeFfmpeg, getMediaDuration, probeMediaStreams } from '../../../lib/media/ffmpeg';
+import { writeInputFile, createJobDir, cleanupJobDir } from '../../../lib/system/temp';
 import { randomUUID } from 'crypto';
 import path from 'node:path';
 import fs from 'node:fs';
-import { verifyAuth, registerJobOwner } from '../../../lib/auth';
-import { sanitizeError, sanitizeSseError } from '../../../lib/errors';
+import { verifyAuth, registerJobOwner } from '../../../lib/security/auth';
+import { sanitizeError, sanitizeSseError } from '../../../lib/security/errors';
 
 export const dynamic = 'force-dynamic';
 

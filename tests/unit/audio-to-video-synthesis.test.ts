@@ -9,22 +9,22 @@ import {
   probeMediaStreams,
   getMediaDuration,
   hexToFfmpegColor,
-} from '../../src/lib/ffmpeg';
+} from '../../src/lib/media/ffmpeg';
 import { POST } from '../../src/app/api/convert/route';
-import * as tempExt from '../../src/lib/temp';
-import * as ffmpegExt from '../../src/lib/ffmpeg';
-import * as authExt from '../../src/lib/auth';
+import * as tempExt from '../../src/lib/system/temp';
+import * as ffmpegExt from '../../src/lib/media/ffmpeg';
+import * as authExt from '../../src/lib/security/auth';
 
 // ── Mock Setup ────────────────────────────────────────────────────────────────
 
-vi.mock('../../src/lib/temp', () => ({
+vi.mock('../../src/lib/system/temp', () => ({
   writeInputFile: vi.fn(),
   cleanupJobDir: vi.fn(),
   createJobDir: vi.fn().mockReturnValue('/mock/tmp/job-a2v-123'),
   sanitizeFilename: vi.fn((f: string) => f.replace(/[^a-zA-Z0-9._-]/g, '_')),
 }));
 
-vi.mock('../../src/lib/ffmpeg', async (importOriginal) => {
+vi.mock('../../src/lib/media/ffmpeg', async (importOriginal) => {
   const actual: any = await importOriginal();
   return {
     ...actual,
@@ -34,7 +34,7 @@ vi.mock('../../src/lib/ffmpeg', async (importOriginal) => {
   };
 });
 
-vi.mock('../../src/lib/env', () => ({
+vi.mock('../../src/lib/system/env', () => ({
   env: {
     FFMPEG_PATH: '/mock/ffmpeg',
     YTDLP_PATH: '/mock/ytdlp',
@@ -43,7 +43,7 @@ vi.mock('../../src/lib/env', () => ({
   },
 }));
 
-vi.mock('../../src/lib/auth', () => ({
+vi.mock('../../src/lib/security/auth', () => ({
   verifyAuth: vi.fn().mockReturnValue({ userId: 'user_test_a2v' }),
   registerJobOwner: vi.fn(),
   verifyJobOwnership: vi.fn().mockReturnValue(true),
