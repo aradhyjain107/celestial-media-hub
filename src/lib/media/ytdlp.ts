@@ -1,5 +1,6 @@
 import cp, { type ChildProcess } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { env } from '../system/env';
 
@@ -26,9 +27,34 @@ function appendFfmpegLocationIfExplicit(args: string[]): void {
   args.push('--ffmpeg-location', ffmpegLoc);
 }
 
+function isLowMemoryContainer(): boolean {
+  if (process.env.RENDER === 'true') return true;
+  if (os.platform() !== 'linux') return false;
+  try {
+    const raw = fs.readFileSync('/sys/fs/cgroup/memory.max', 'utf8').trim();
+    if (raw && raw !== 'max') {
+      const bytes = Number.parseInt(raw, 10);
+      if (Number.isFinite(bytes) && bytes > 0 && bytes <= 768 * 1024 * 1024) {
+        return true;
+      }
+    }
+  } catch {
+    // Ignore cgroup read errors
+  }
+  return false;
+}
+
 function appendOptionalRuntimeArgs(args: string[]): void {
   if (!args.includes('--ignore-config')) {
     args.push('--ignore-config');
+  }
+  // Prefer lightweight QuickJS (~100 MB less RSS than Deno V8) inside 512 MB cloud containers.
+  if (
+    isLowMemoryContainer() &&
+    !args.includes('--js-runtimes') &&
+    fs.existsSync('/usr/local/bin/qjs')
+  ) {
+    args.push('--no-js-runtimes', '--js-runtimes', 'quickjs:/usr/local/bin/qjs');
   }
   const cookiesPath = process.env.YTDLP_COOKIES_PATH?.trim();
   // eslint-disable-next-line security/detect-non-literal-fs-filename
@@ -41,12 +67,17 @@ function appendOptionalRuntimeArgs(args: string[]): void {
   }
 }
 
-function classifyYtdlpFailureCode(stderrLog: string): string | null {
+function classifyYtdlpFailureCode(stderrLog: string, exitCode?: number | null, signal?: string | null): string | null {
+  if (signal === 'SIGKILL' || exitCode === 137) {
+    return 'MEMORY_LIMIT_EXCEEDED';
+  }
   const lower = stderrLog.toLowerCase();
   if (
     lower.includes('sign in to confirm') ||
     lower.includes('not a bot') ||
-    lower.includes('bot verification')
+    lower.includes('bot verification') ||
+    lower.includes('please sign in') ||
+    lower.includes('login_required')
   ) {
     return 'YOUTUBE_BOT_CHECK';
   }
@@ -72,14 +103,27 @@ function classifyYtdlpFailureCode(stderrLog: string): string | null {
   if (lower.includes('requested format is not available') || lower.includes('only images are available')) {
     return 'FORMAT_UNAVAILABLE';
   }
-  if (lower.includes('postprocessing:') || lower.includes('ffprobe and ffmpeg not found')) {
+  if (lower.includes('postprocessing:') || lower.includes('conversion failed') || lower.includes('ffprobe and ffmpeg not found')) {
     return 'POSTPROCESS_FAILED';
   }
   if (lower.includes('timed out')) {
     return 'UPSTREAM_TIMEOUT';
   }
-  if (lower.includes('http error 403') || lower.includes('unable to extract') || lower.includes('connection reset')) {
+  if (
+    lower.includes('failed to extract') ||
+    lower.includes('player response') ||
+    lower.includes('js challenge') ||
+    lower.includes('no supported javascript runtime') ||
+    lower.includes('nsig') ||
+    lower.includes('unable to extract')
+  ) {
+    return 'YOUTUBE_EXTRACTOR_FAILED';
+  }
+  if (lower.includes('http error 403') || lower.includes('unable to download') || lower.includes('connection reset') || lower.includes('urlopen')) {
     return 'NETWORK_ERROR';
+  }
+  if (lower.includes('out of memory') || lower.includes('cannot allocate memory')) {
+    return 'MEMORY_LIMIT_EXCEEDED';
   }
   return null;
 }
@@ -487,7 +531,7 @@ export function executeYtdlp(jobDir: string, url: string, args: string[]): Reada
           }
 
           await new Promise<void>((resolve, reject) => {
-            ytdlp.on('close', (code) => {
+            ytdlp.on('close', (code, signal) => {
               if (activityTimer) clearTimeout(activityTimer);
               markExited();
               if (isCancelled) {
@@ -497,8 +541,19 @@ export function executeYtdlp(jobDir: string, url: string, args: string[]): Reada
               const filesAfter = listCompletedMediaFiles(jobDir);
               const downloadedNewFile = filesAfter.some((f) => !filesBefore.has(f));
               if (code !== 0 && !downloadedNewFile) {
-                const detail = timedOut ? 'yt-dlp timed out waiting for upstream media' : stderrLog.substring(0, 220) || 'process terminated';
-                reject(Object.assign(new Error(`yt-dlp error: ${detail}`), { stderrLog: timedOut ? `${stderrLog}\ntimed out` : stderrLog }));
+                const detail = timedOut
+                  ? 'yt-dlp timed out waiting for upstream media'
+                  : signal
+                    ? `yt-dlp killed by signal ${signal}`
+                    : stderrLog.substring(0, 220) || 'process terminated';
+                reject(
+                  Object.assign(new Error(`yt-dlp error: ${detail}`), {
+                    stderrLog: timedOut ? `${stderrLog}\ntimed out` : stderrLog,
+                    exitCode: code,
+                    signal,
+                    timedOut,
+                  })
+                );
               } else {
                 resolve();
               }
@@ -520,28 +575,50 @@ export function executeYtdlp(jobDir: string, url: string, args: string[]): Reada
         try {
           await runAttempt([]);
         } catch (firstErr: unknown) {
+          const errMeta = (firstErr && typeof firstErr === 'object' ? firstErr : {}) as {
+            stderrLog?: string;
+            exitCode?: number | null;
+            signal?: string | null;
+            timedOut?: boolean;
+          };
           const firstStderr =
-            (firstErr && typeof firstErr === 'object' && 'stderrLog' in firstErr
-              ? String((firstErr as { stderrLog?: string }).stderrLog ?? '')
-              : '') ||
+            errMeta.stderrLog ||
             (firstErr instanceof Error ? firstErr.message : '');
 
-          if (!isCancelled && isYoutubeUrl(url) && isRetryableYoutubeClientError(firstStderr)) {
+          const canRetry =
+            !isCancelled &&
+            !errMeta.timedOut &&
+            errMeta.signal !== 'SIGKILL' &&
+            errMeta.exitCode !== 137 &&
+            isYoutubeUrl(url) &&
+            isRetryableYoutubeClientError(firstStderr);
+
+          if (canRetry) {
             try {
               await runAttempt(['--extractor-args', 'youtube:player_client=tv_simply,android_vr,web_embedded']);
             } catch (retryErr: unknown) {
-              const retryStderr =
-                (retryErr && typeof retryErr === 'object' && 'stderrLog' in retryErr
-                  ? String((retryErr as { stderrLog?: string }).stderrLog ?? '')
-                  : '') || firstStderr;
-              const code = classifyYtdlpFailureCode(`${firstStderr}\n${retryStderr}`);
+              const retryMeta = (retryErr && typeof retryErr === 'object' ? retryErr : {}) as {
+                stderrLog?: string;
+                exitCode?: number | null;
+                signal?: string | null;
+              };
+              const retryStderr = retryMeta.stderrLog || firstStderr;
+              const code = classifyYtdlpFailureCode(
+                `${firstStderr}\n${retryStderr}`,
+                retryMeta.exitCode ?? errMeta.exitCode,
+                retryMeta.signal ?? errMeta.signal
+              );
               if (code) {
                 throw new Error(`[SAFE:${code}] ${retryErr instanceof Error ? retryErr.message : 'yt-dlp failed'}`);
               }
               throw retryErr;
             }
           } else {
-            const code = classifyYtdlpFailureCode(firstStderr);
+            const code = classifyYtdlpFailureCode(
+              firstStderr,
+              errMeta.exitCode,
+              errMeta.signal
+            );
             if (code) {
               throw new Error(`[SAFE:${code}] ${firstErr instanceof Error ? firstErr.message : 'yt-dlp failed'}`);
             }

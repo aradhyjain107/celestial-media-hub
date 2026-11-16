@@ -158,5 +158,42 @@ describe('YouTube & Session Resilience Suite', () => {
       expect(sseOut).toContain('YouTube blocked automated download from this shared cloud IP');
       expect(resolveSafeSseMessage(new Error('/secret/path/leak'))).toBeUndefined();
     });
+
+    test('executeYtdlp classifies SIGKILL (512 MB OOM) cleanly without wasting time retrying', async () => {
+      const spawnCalls: string[][] = [];
+      vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+      vi.spyOn(fs, 'readdirSync').mockReturnValue([] as any);
+
+      vi.spyOn(cp, 'spawn').mockImplementation((_cmd, args) => {
+        spawnCalls.push([...(args as string[])]);
+        const proc = new EventEmitter() as any;
+        proc.stdin = new EventEmitter();
+        proc.stdout = new EventEmitter();
+        proc.stderr = new EventEmitter();
+        proc.kill = vi.fn();
+        queueMicrotask(() => {
+          proc.emit('close', null, 'SIGKILL');
+          proc.emit('exit', null, 'SIGKILL');
+        });
+        return proc;
+      });
+
+      const stream = executeYtdlp('/tmp/job-oom', 'https://www.youtube.com/watch?v=jNQXAC9IVRw', [
+        '-P',
+        '/tmp/job-oom',
+      ]);
+      const reader = stream.getReader();
+      let chunks = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks += new TextDecoder().decode(value);
+      }
+
+      expect(spawnCalls).toHaveLength(1);
+      expect(chunks).toContain('[SAFE:MEMORY_LIMIT_EXCEEDED]');
+      const sseOut = sanitizeSseError(new Error(chunks), 'SSE /api/youtube');
+      expect(sseOut).toContain('512 MB memory limit');
+    });
   });
 });

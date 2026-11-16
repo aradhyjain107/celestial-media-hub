@@ -69,6 +69,14 @@ const KNOWN_SAFE_SSE_MESSAGES: ReadonlyMap<string, string> = new Map([
     'Media downloaded, but FFmpeg post-processing failed during conversion or muxing.',
   ],
   [
+    'MEMORY_LIMIT_EXCEEDED',
+    'Cloud container exceeded its 512 MB memory limit while solving the stream. Run Celestial Media Hub locally via Desktop App for unrestricted downloads.',
+  ],
+  [
+    'YOUTUBE_EXTRACTOR_FAILED',
+    'YouTube blocked or rejected extraction from this shared cloud IP. Run Celestial Media Hub locally via Desktop App (or try another link).',
+  ],
+  [
     'NETWORK_ERROR',
     'Upstream extractor blocked or failed (HTTP 403 / connection error). Try again or run locally via Desktop App.',
   ],

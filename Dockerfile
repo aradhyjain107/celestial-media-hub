@@ -1,6 +1,6 @@
 FROM node:20-bookworm-slim
 
-# Install system media binaries: ffmpeg/ffprobe, cwebp, python3 (required by yt-dlp), and deno (yt-dlp JS challenge solver)
+# Install system media binaries: ffmpeg/ffprobe, cwebp, python3 (yt-dlp), deno, and quickjs-ng (low-RAM JS solver for 512MB containers)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     webp \
@@ -9,11 +9,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     unzip \
   && ARCH="$(dpkg --print-architecture)" \
-  && if [ "$ARCH" = "arm64" ]; then DENO_TARGET="aarch64-unknown-linux-gnu"; else DENO_TARGET="x86_64-unknown-linux-gnu"; fi \
+  && if [ "$ARCH" = "arm64" ]; then DENO_TARGET="aarch64-unknown-linux-gnu"; QJS_TARGET="qjs-linux-aarch64"; else DENO_TARGET="x86_64-unknown-linux-gnu"; QJS_TARGET="qjs-linux-x86_64"; fi \
   && curl -fsSL "https://github.com/denoland/deno/releases/latest/download/deno-${DENO_TARGET}.zip" -o /tmp/deno.zip \
   && unzip -q /tmp/deno.zip -d /usr/local/bin \
   && rm -f /tmp/deno.zip \
   && chmod a+rx /usr/local/bin/deno \
+  && curl -fsSL "https://github.com/quickjs-ng/quickjs/releases/latest/download/${QJS_TARGET}" -o /usr/local/bin/qjs \
+  && chmod a+rx /usr/local/bin/qjs \
   && rm -rf /var/lib/apt/lists/*
 
 # Install latest official yt-dlp release (>= 2025.12.0 security baseline)
