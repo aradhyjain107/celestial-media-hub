@@ -145,6 +145,16 @@ function readLinuxCgroupLimits(hostMemoryBytes: number, hostCores: number): Linu
   );
 }
 
+/** Returns true when running inside a low-memory / fractional-CPU container (e.g. Render 512 MB / 0.15 vCPU). */
+export function isConstrainedContainer(): boolean {
+  if (os.platform() !== "linux") return false;
+  const cpus = os.cpus() || [];
+  const cgroup = readLinuxCgroupLimits(os.totalmem(), Math.max(1, cpus.length));
+  const lowMem = cgroup.memoryLimitBytes !== null && cgroup.memoryLimitBytes <= 1.5 * 1024 * 1024 * 1024;
+  const lowCpu = cgroup.cpuCores !== null && cgroup.cpuCores < 2;
+  return lowMem || lowCpu;
+}
+
 /**
  * Inspects host OS (and Linux container cgroup limits) directly and calculates device-specific precision limits.
  */

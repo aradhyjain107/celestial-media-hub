@@ -478,6 +478,34 @@ export async function getMediaDuration(inputPath: string): Promise<number> {
 import os from 'node:os';
 
 export function getOptimalFfmpegThreads(): string {
+  // Respect Linux cgroup RAM/CPU quotas (e.g. Render 512 MB / 0.15 vCPU) so FFmpeg stays single-threaded and avoids OOM.
+  if (os.platform() === 'linux') {
+    try {
+      const hostMem = os.totalmem();
+      const memMaxRaw = (() => {
+        for (const p of ['/sys/fs/cgroup/memory.max', '/sys/fs/cgroup/memory/memory.limit_in_bytes']) {
+          try {
+            // eslint-disable-next-line security/detect-non-literal-fs-filename
+            const v = fs.readFileSync(p, 'utf8').trim();
+            if (v && v !== 'max') return Number.parseInt(v, 10);
+          } catch {}
+        }
+        return null;
+      })();
+      if (memMaxRaw !== null && Number.isFinite(memMaxRaw) && memMaxRaw > 0 && memMaxRaw < hostMem && memMaxRaw <= 1.5 * 1024 * 1024 * 1024) {
+        return '1';
+      }
+      try {
+        const cpuMax = fs.readFileSync('/sys/fs/cgroup/cpu.max', 'utf8').trim();
+        const [q, p] = cpuMax.split(/\s+/);
+        if (q && p && q !== 'max') {
+          const cores = Number.parseInt(q, 10) / Number.parseInt(p, 10);
+          if (Number.isFinite(cores) && cores < 2) return '1';
+        }
+      } catch {}
+    } catch {}
+  }
+
   const cpus = os.cpus();
   const totalCores = cpus && cpus.length ? cpus.length : 4;
   // Reserve at least 2 cores for macOS WindowServer / desktop responsiveness, cap CPU worker threads to 4

@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import { verifyAuth, registerJobOwner } from '../../../lib/security/auth';
 import { sanitizeError, sanitizeSseError } from '../../../lib/security/errors';
 import { createZipArchive } from '../../../lib/utils/archive';
+import { isConstrainedContainer } from '../../../lib/system/serverHardwareProfiler';
 
 export const dynamic = 'force-dynamic';
 
@@ -265,16 +266,31 @@ export async function POST(req: NextRequest) {
                   args.push('-c:v', hwEncoder, '-q:v', String(videoCrf));
                 }
               } else if (videoCodec === 'av1') {
+                const constrained = isConstrainedContainer();
                 if (await isEncoderAvailable('libsvtav1')) {
                   const svtPresetMap: Record<string, string> = { ultrafast: '10', fast: '8', medium: '6', slow: '4' };
                   // eslint-disable-next-line security/detect-object-injection
                   const svtPreset = svtPresetMap[videoPreset] || '6';
                   args.push('-c:v', 'libsvtav1', '-crf', String(videoCrf), '-preset', svtPreset, '-pix_fmt', 'yuv420p');
+                  if (constrained) {
+                    args.push('-threads', '1', '-svtav1-params', 'lp=1:lookahead=0:enable-qm=0');
+                  }
                 } else if (await isEncoderAvailable('libaom-av1')) {
                   const aomCpuUsedMap: Record<string, string> = { ultrafast: '8', fast: '7', medium: '6', slow: '4' };
                   // eslint-disable-next-line security/detect-object-injection
-                  const cpuUsed = aomCpuUsedMap[videoPreset] || '6';
-                  args.push('-c:v', 'libaom-av1', '-crf', String(videoCrf), '-b:v', '0', '-cpu-used', cpuUsed, '-row-mt', '1', '-pix_fmt', 'yuv420p');
+                  const cpuUsed = constrained ? '8' : (aomCpuUsedMap[videoPreset] || '6');
+                  if (constrained) {
+                    args.push('-threads', '1');
+                  }
+                  args.push(
+                    '-c:v', 'libaom-av1',
+                    '-crf', String(videoCrf),
+                    '-b:v', '0',
+                    '-cpu-used', cpuUsed,
+                    '-lag-in-frames', '0',
+                    '-row-mt', constrained ? '0' : '1',
+                    '-pix_fmt', 'yuv420p',
+                  );
                 } else {
                   args.push('-c:v', 'libx264', '-crf', String(videoCrf), '-preset', videoPreset, '-pix_fmt', 'yuv420p');
                 }

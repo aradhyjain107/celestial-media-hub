@@ -309,6 +309,7 @@ describe('POST /api/compress — Unit Test Suite', () => {
           '-crf', '30',
           '-b:v', '0',
           '-cpu-used', '7',
+          '-lag-in-frames', '0',
           '-row-mt', '1',
           '-pix_fmt', 'yuv420p',
           '-c:a', 'aac',
