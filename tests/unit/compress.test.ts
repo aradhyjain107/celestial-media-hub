@@ -1,5 +1,7 @@
 import { expect, describe, test, vi, beforeEach } from 'vitest';
 import { POST } from '../../src/app/api/compress/route';
+import { POST as estimatePOST } from '../../src/app/api/compress/estimate/route';
+import { buildSoftwareVideoCompressArgs } from '../../src/lib/media/videoCompressArgs';
 import { NextRequest } from 'next/server';
 import fs from 'node:fs';
 import * as childProcess from 'node:child_process';
@@ -91,7 +93,10 @@ describe('POST /api/compress — Unit Test Suite', () => {
       formData.append('videoCodec', 'hevc');
       const req = {
         formData: async () => formData,
-        headers: new Headers({ authorization: 'Bearer user_test' }),
+        headers: new Headers({
+          authorization: 'Bearer user_test',
+          'content-type': 'multipart/form-data; boundary=mock',
+        }),
       } as any as NextRequest;
 
       const res = await POST(req);
@@ -107,7 +112,10 @@ describe('POST /api/compress — Unit Test Suite', () => {
 
       const req = {
         formData: async () => formData,
-        headers: new Headers({ authorization: 'Bearer user_test' }),
+        headers: new Headers({
+          authorization: 'Bearer user_test',
+          'content-type': 'multipart/form-data; boundary=mock',
+        }),
       } as any as NextRequest;
 
       const res = await POST(req);
@@ -123,7 +131,10 @@ describe('POST /api/compress — Unit Test Suite', () => {
 
       const req = {
         formData: async () => formData,
-        headers: new Headers({ authorization: 'Bearer user_test' }),
+        headers: new Headers({
+          authorization: 'Bearer user_test',
+          'content-type': 'multipart/form-data; boundary=mock',
+        }),
       } as any as NextRequest;
 
       const res = await POST(req);
@@ -137,7 +148,10 @@ describe('POST /api/compress — Unit Test Suite', () => {
 
       const req = {
         formData: async () => formData,
-        headers: new Headers({ authorization: 'Bearer user_test' }),
+        headers: new Headers({
+          authorization: 'Bearer user_test',
+          'content-type': 'multipart/form-data; boundary=mock',
+        }),
       } as any as NextRequest;
 
       const res = await POST(req);
@@ -157,7 +171,10 @@ describe('POST /api/compress — Unit Test Suite', () => {
 
       const req = {
         formData: async () => formData,
-        headers: new Headers({ authorization: 'Bearer user_test' }),
+        headers: new Headers({
+          authorization: 'Bearer user_test',
+          'content-type': 'multipart/form-data; boundary=mock',
+        }),
       } as any as NextRequest;
 
       vi.mocked(tempExt.writeInputFile).mockResolvedValue('/mock/compressPath/sample.mp4');
@@ -207,7 +224,10 @@ describe('POST /api/compress — Unit Test Suite', () => {
 
       const req = {
         formData: async () => formData,
-        headers: new Headers({ authorization: 'Bearer user_test' }),
+        headers: new Headers({
+          authorization: 'Bearer user_test',
+          'content-type': 'multipart/form-data; boundary=mock',
+        }),
       } as any as NextRequest;
 
       vi.mocked(tempExt.writeInputFile).mockResolvedValue('/mock/compressPath/clip.mov');
@@ -248,7 +268,10 @@ describe('POST /api/compress — Unit Test Suite', () => {
 
       const req = {
         formData: async () => formData,
-        headers: new Headers({ authorization: 'Bearer user_test' }),
+        headers: new Headers({
+          authorization: 'Bearer user_test',
+          'content-type': 'multipart/form-data; boundary=mock',
+        }),
       } as any as NextRequest;
 
       vi.mocked(tempExt.writeInputFile).mockResolvedValue('/mock/compressPath/video.mkv');
@@ -290,7 +313,10 @@ describe('POST /api/compress — Unit Test Suite', () => {
 
       const req = {
         formData: async () => formData,
-        headers: new Headers({ authorization: 'Bearer user_test' }),
+        headers: new Headers({
+          authorization: 'Bearer user_test',
+          'content-type': 'multipart/form-data; boundary=mock',
+        }),
       } as any as NextRequest;
 
       vi.mocked(tempExt.writeInputFile).mockResolvedValue('/mock/compressPath/video.mkv');
@@ -329,7 +355,10 @@ describe('POST /api/compress — Unit Test Suite', () => {
 
       const req = {
         formData: async () => formData,
-        headers: new Headers({ authorization: 'Bearer user_test' }),
+        headers: new Headers({
+          authorization: 'Bearer user_test',
+          'content-type': 'multipart/form-data; boundary=mock',
+        }),
       } as any as NextRequest;
 
       vi.mocked(tempExt.writeInputFile).mockResolvedValue('/mock/compressPath/mute.mp4');
@@ -375,7 +404,10 @@ describe('POST /api/compress — Unit Test Suite', () => {
 
       const req = {
         formData: async () => formData,
-        headers: new Headers({ authorization: 'Bearer user_test' }),
+        headers: new Headers({
+          authorization: 'Bearer user_test',
+          'content-type': 'multipart/form-data; boundary=mock',
+        }),
       } as any as NextRequest;
 
       vi.mocked(tempExt.writeInputFile).mockResolvedValue('/mock/compressPath/song.mp3');
@@ -407,7 +439,10 @@ describe('POST /api/compress — Unit Test Suite', () => {
 
       const req = {
         formData: async () => formData,
-        headers: new Headers({ authorization: 'Bearer user_test' }),
+        headers: new Headers({
+          authorization: 'Bearer user_test',
+          'content-type': 'multipart/form-data; boundary=mock',
+        }),
       } as any as NextRequest;
 
       vi.mocked(tempExt.writeInputFile).mockResolvedValue('/mock/compressPath/track.m4a');
@@ -438,7 +473,10 @@ describe('POST /api/compress — Unit Test Suite', () => {
 
       const req = {
         formData: async () => formData,
-        headers: new Headers({ authorization: 'Bearer user_test' }),
+        headers: new Headers({
+          authorization: 'Bearer user_test',
+          'content-type': 'multipart/form-data; boundary=mock',
+        }),
       } as any as NextRequest;
 
       vi.mocked(tempExt.writeInputFile).mockResolvedValue('/mock/compressPath/voice.ogg');
@@ -468,7 +506,10 @@ describe('POST /api/compress — Unit Test Suite', () => {
 
       const req = {
         formData: async () => formData,
-        headers: new Headers({ authorization: 'Bearer user_test' }),
+        headers: new Headers({
+          authorization: 'Bearer user_test',
+          'content-type': 'multipart/form-data; boundary=mock',
+        }),
       } as any as NextRequest;
 
       vi.mocked(tempExt.writeInputFile).mockResolvedValue('/mock/compressPath/audio.wav');
@@ -503,7 +544,10 @@ describe('POST /api/compress — Unit Test Suite', () => {
 
       const req = {
         formData: async () => formData,
-        headers: new Headers({ authorization: 'Bearer user_test' }),
+        headers: new Headers({
+          authorization: 'Bearer user_test',
+          'content-type': 'multipart/form-data; boundary=mock',
+        }),
       } as any as NextRequest;
 
       vi.mocked(tempExt.writeInputFile).mockResolvedValue('/mock/compressPath/photo.jpg');
@@ -530,7 +574,10 @@ describe('POST /api/compress — Unit Test Suite', () => {
 
       const req = {
         formData: async () => formData,
-        headers: new Headers({ authorization: 'Bearer user_test' }),
+        headers: new Headers({
+          authorization: 'Bearer user_test',
+          'content-type': 'multipart/form-data; boundary=mock',
+        }),
       } as any as NextRequest;
 
       vi.mocked(tempExt.writeInputFile).mockResolvedValue('/mock/compressPath/photo.png');
@@ -557,7 +604,10 @@ describe('POST /api/compress — Unit Test Suite', () => {
 
       const req = {
         formData: async () => formData,
-        headers: new Headers({ authorization: 'Bearer user_test' }),
+        headers: new Headers({
+          authorization: 'Bearer user_test',
+          'content-type': 'multipart/form-data; boundary=mock',
+        }),
       } as any as NextRequest;
 
       vi.mocked(tempExt.writeInputFile).mockResolvedValue('/mock/compressPath/photo.bmp');
@@ -605,7 +655,10 @@ describe('POST /api/compress — Unit Test Suite', () => {
 
       const req = {
         formData: async () => formData,
-        headers: new Headers({ authorization: 'Bearer user_test' }),
+        headers: new Headers({
+          authorization: 'Bearer user_test',
+          'content-type': 'multipart/form-data; boundary=mock',
+        }),
       } as any as NextRequest;
 
       vi.mocked(tempExt.writeInputFile).mockResolvedValue('/mock/compressPath/video.mp4');
@@ -646,7 +699,10 @@ describe('POST /api/compress — Unit Test Suite', () => {
 
       const req = {
         formData: async () => formData,
-        headers: new Headers({ authorization: 'Bearer user_test' }),
+        headers: new Headers({
+          authorization: 'Bearer user_test',
+          'content-type': 'multipart/form-data; boundary=mock',
+        }),
       } as any as NextRequest;
 
       vi.mocked(tempExt.writeInputFile).mockResolvedValue('/mock/compressPath/video.mp4');
@@ -686,7 +742,10 @@ describe('POST /api/compress — Unit Test Suite', () => {
 
       const req = {
         formData: async () => formData,
-        headers: new Headers({ authorization: 'Bearer user_test' }),
+        headers: new Headers({
+          authorization: 'Bearer user_test',
+          'content-type': 'multipart/form-data; boundary=mock',
+        }),
       } as any as NextRequest;
 
       vi.mocked(tempExt.writeInputFile).mockResolvedValue('/mock/compressPath/video.mp4');
@@ -729,7 +788,10 @@ describe('POST /api/compress — Unit Test Suite', () => {
 
       const req = {
         formData: async () => formData,
-        headers: new Headers({ authorization: 'Bearer user_test' }),
+        headers: new Headers({
+          authorization: 'Bearer user_test',
+          'content-type': 'multipart/form-data; boundary=mock',
+        }),
       } as any as NextRequest;
 
       vi.mocked(tempExt.writeInputFile)
@@ -774,7 +836,10 @@ describe('POST /api/compress — Unit Test Suite', () => {
 
       const req = {
         formData: async () => formData,
-        headers: new Headers({ authorization: 'Bearer user_test' }),
+        headers: new Headers({
+          authorization: 'Bearer user_test',
+          'content-type': 'multipart/form-data; boundary=mock',
+        }),
       } as any as NextRequest;
 
       vi.mocked(tempExt.writeInputFile).mockResolvedValue('/mock/compressPath/corrupted.mp4');
@@ -802,7 +867,10 @@ describe('POST /api/compress — Unit Test Suite', () => {
 
       const req = {
         formData: async () => formData,
-        headers: new Headers({ authorization: 'Bearer user_test' }),
+        headers: new Headers({
+          authorization: 'Bearer user_test',
+          'content-type': 'multipart/form-data; boundary=mock',
+        }),
       } as any as NextRequest;
 
       vi.mocked(tempExt.writeInputFile).mockResolvedValue('/mock/compressPath/cancel_test.mp4');
@@ -826,6 +894,68 @@ describe('POST /api/compress — Unit Test Suite', () => {
       await reader.cancel('User navigated away');
 
       expect(tempExt.cleanupJobDir).toHaveBeenCalled();
+    });
+  });
+
+  // ── 8. Shared Video Compression Args & /api/compress/estimate AV1 ─────────
+  describe('8. Shared Video Compression Args & Estimate Endpoint', () => {
+    test('buildSoftwareVideoCompressArgs constrains threads and lookahead for AV1 on low-memory containers', async () => {
+      const svtArgs = await buildSoftwareVideoCompressArgs({
+        videoCodec: 'av1',
+        videoCrf: 30,
+        videoPreset: 'medium',
+        constrained: true,
+        hasEncoder: async (n) => n === 'libsvtav1',
+      });
+      expect(svtArgs).toContain('libsvtav1');
+      expect(svtArgs).toContain('-preset');
+      expect(svtArgs).toContain('6');
+      expect(svtArgs).toContain('lp=1:lookahead=0:enable-qm=0');
+
+      const aomArgs = await buildSoftwareVideoCompressArgs({
+        videoCodec: 'av1',
+        videoCrf: 30,
+        videoPreset: 'slow',
+        constrained: true,
+        hasEncoder: async (n) => n === 'libaom-av1',
+      });
+      expect(aomArgs).toContain('libaom-av1');
+      expect(aomArgs).toContain('-lag-in-frames');
+      expect(aomArgs).toContain('0');
+      expect(aomArgs).toContain('-threads');
+      expect(aomArgs).toContain('1');
+    });
+
+    test('/api/compress/estimate delegates AV1 encoding through shared low-memory encoder helper', async () => {
+      vi.mocked(ffmpegExt.isEncoderAvailable).mockImplementation(async (enc: string) => enc === 'libaom-av1');
+      const formData = new FormData();
+      formData.append('videoCodec', 'av1');
+      formData.append('videoCrf', '30');
+      formData.append('resolution', '480p');
+      formData.append('files', new File(['mock vid'], 'sample.mp4', { type: 'video/mp4' }));
+
+      const req = {
+        formData: async () => formData,
+        headers: new Headers({
+          authorization: 'Bearer user_test',
+          'content-type': 'multipart/form-data; boundary=mock',
+        }),
+      } as any as NextRequest;
+
+      vi.mocked(ffmpegExt.executeFfmpeg).mockReturnValue(new ReadableStream({
+        start(c) {
+          c.enqueue(new TextEncoder().encode('data: {"progress":100}\n\n'));
+          c.close();
+        }
+      }));
+
+      const res = await estimatePOST(req);
+      expect(res.status).toBe(200);
+      expect(ffmpegExt.executeFfmpeg).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.arrayContaining(['-c:v', 'libaom-av1', '-lag-in-frames', '0']),
+        expect.any(Number),
+      );
     });
   });
 });

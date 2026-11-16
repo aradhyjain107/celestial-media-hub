@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { executeFfmpeg, probeMediaStreams, isEncoderAvailable } from '../../../../lib/media/ffmpeg';
+import { isConstrainedContainer } from '../../../../lib/system/serverHardwareProfiler';
+import { buildSoftwareVideoCompressArgs } from '../../../../lib/media/videoCompressArgs';
 import { createJobDir, cleanupJobDir } from '../../../../lib/system/temp';
 import { verifyAuth } from '../../../../lib/security/auth';
 import { sanitizeError } from '../../../../lib/security/errors';
@@ -285,7 +287,7 @@ export async function POST(req: NextRequest) {
         const isShortClip = duration > 0 && duration <= 12 && item.size <= 30 * 1024 * 1024;
         const sampleDuration = 2.5;
 
-        const buildVideoEncodeArgs = (outFile: string, startSec?: number, durSec?: number): string[] => {
+        const buildVideoEncodeArgs = async (outFile: string, startSec?: number, durSec?: number): Promise<string[]> => {
           const args: string[] = [];
           if (typeof startSec === 'number' && typeof durSec === 'number') {
             args.push('-ss', startSec.toFixed(2), '-t', durSec.toFixed(2));
@@ -302,15 +304,14 @@ export async function POST(req: NextRequest) {
               args.push('-c:v', hwEncoder, '-q:v', String(videoCrf));
             }
           } else {
-            const codecMap: Record<string, string> = {
-              hevc: 'libx265',
-              h264: 'libx264',
-              av1: 'libsvtav1',
-              vp9: 'libvpx-vp9'
-            };
-            // eslint-disable-next-line security/detect-object-injection
-            const encoder = codecMap[videoCodec] || 'libx265';
-            args.push('-c:v', encoder, '-crf', String(videoCrf), '-preset', isShortClip ? videoPreset : 'faster');
+            const swArgs = await buildSoftwareVideoCompressArgs({
+              videoCodec,
+              videoCrf,
+              videoPreset: isShortClip ? videoPreset : 'faster',
+              constrained: isConstrainedContainer(),
+              hasEncoder: isEncoderAvailable,
+            });
+            args.push(...swArgs);
           }
 
           if (resolution !== 'original') {
@@ -335,7 +336,7 @@ export async function POST(req: NextRequest) {
         };
 
         if (isShortClip) {
-          const args = buildVideoEncodeArgs(outputPath);
+          const args = await buildVideoEncodeArgs(outputPath);
           await runStreamToCompletion(executeFfmpeg(inputPath, args, duration));
           // eslint-disable-next-line security/detect-non-literal-fs-filename
           if (fs.existsSync(outputPath)) {
@@ -352,7 +353,7 @@ export async function POST(req: NextRequest) {
             const frac = samplePoints[sIdx];
             const startSec = Math.max(0, (duration - sampleDuration) * frac);
             const sliceOut = path.join(scratchDir, `est_${i}_slice_${sIdx}.mp4`);
-            const args = buildVideoEncodeArgs(sliceOut, startSec, sampleDuration);
+            const args = await buildVideoEncodeArgs(sliceOut, startSec, sampleDuration);
             await runStreamToCompletion(executeFfmpeg(inputPath, args, sampleDuration));
             // eslint-disable-next-line security/detect-non-literal-fs-filename
             if (fs.existsSync(sliceOut)) {

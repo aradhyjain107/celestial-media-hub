@@ -10,6 +10,7 @@ import { verifyAuth, registerJobOwner } from '../../../lib/security/auth';
 import { sanitizeError, sanitizeSseError } from '../../../lib/security/errors';
 import { createZipArchive } from '../../../lib/utils/archive';
 import { isConstrainedContainer } from '../../../lib/system/serverHardwareProfiler';
+import { buildSoftwareVideoCompressArgs } from '../../../lib/media/videoCompressArgs';
 
 export const dynamic = 'force-dynamic';
 
@@ -265,48 +266,15 @@ export async function POST(req: NextRequest) {
                 } else {
                   args.push('-c:v', hwEncoder, '-q:v', String(videoCrf));
                 }
-              } else if (videoCodec === 'av1') {
-                const constrained = isConstrainedContainer();
-                if (await isEncoderAvailable('libsvtav1')) {
-                  const svtPresetMap: Record<string, string> = { ultrafast: '10', fast: '8', medium: '6', slow: '4' };
-                  // eslint-disable-next-line security/detect-object-injection
-                  const svtPreset = svtPresetMap[videoPreset] || '6';
-                  args.push('-c:v', 'libsvtav1', '-crf', String(videoCrf), '-preset', svtPreset, '-pix_fmt', 'yuv420p');
-                  if (constrained) {
-                    args.push('-threads', '1', '-svtav1-params', 'lp=1:lookahead=0:enable-qm=0');
-                  }
-                } else if (await isEncoderAvailable('libaom-av1')) {
-                  const aomCpuUsedMap: Record<string, string> = { ultrafast: '8', fast: '7', medium: '6', slow: '4' };
-                  // eslint-disable-next-line security/detect-object-injection
-                  const cpuUsed = constrained ? '8' : (aomCpuUsedMap[videoPreset] || '6');
-                  if (constrained) {
-                    args.push('-threads', '1');
-                  }
-                  args.push(
-                    '-c:v', 'libaom-av1',
-                    '-crf', String(videoCrf),
-                    '-b:v', '0',
-                    '-cpu-used', cpuUsed,
-                    '-lag-in-frames', '0',
-                    '-row-mt', constrained ? '0' : '1',
-                    '-pix_fmt', 'yuv420p',
-                  );
-                } else {
-                  args.push('-c:v', 'libx264', '-crf', String(videoCrf), '-preset', videoPreset, '-pix_fmt', 'yuv420p');
-                }
-              } else if (videoCodec === 'vp9') {
-                const vp9CpuUsedMap: Record<string, string> = { ultrafast: '5', fast: '4', medium: '2', slow: '1' };
-                // eslint-disable-next-line security/detect-object-injection
-                const cpuUsed = vp9CpuUsedMap[videoPreset] || '2';
-                args.push('-c:v', 'libvpx-vp9', '-crf', String(videoCrf), '-b:v', '0', '-deadline', 'good', '-cpu-used', cpuUsed, '-pix_fmt', 'yuv420p');
               } else {
-                const codecMap: Record<string, string> = {
-                  hevc: 'libx265',
-                  h264: 'libx264',
-                };
-                // eslint-disable-next-line security/detect-object-injection
-                const encoder = codecMap[videoCodec] || 'libx265';
-                args.push('-c:v', encoder, '-crf', String(videoCrf), '-preset', videoPreset);
+                const swArgs = await buildSoftwareVideoCompressArgs({
+                  videoCodec,
+                  videoCrf,
+                  videoPreset,
+                  constrained: isConstrainedContainer(),
+                  hasEncoder: isEncoderAvailable,
+                });
+                args.push(...swArgs);
               }
 
               if (resolution !== 'original') {
