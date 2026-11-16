@@ -3,6 +3,103 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { env } from '../system/env';
 
+function isYoutubeUrl(rawUrl: string): boolean {
+  try {
+    const parsed = new URL(rawUrl);
+    const host = parsed.hostname.toLowerCase();
+    return (
+      host === 'youtube.com' ||
+      host === 'www.youtube.com' ||
+      host === 'm.youtube.com' ||
+      host === 'music.youtube.com' ||
+      host === 'youtu.be' ||
+      host.endsWith('.youtube.com')
+    );
+  } catch {
+    return false;
+  }
+}
+
+function appendOptionalRuntimeArgs(args: string[]): void {
+  if (!args.includes('--ignore-config')) {
+    args.push('--ignore-config');
+  }
+  const cookiesPath = process.env.YTDLP_COOKIES_PATH?.trim();
+  // eslint-disable-next-line security/detect-non-literal-fs-filename
+  if (cookiesPath && fs.existsSync(cookiesPath) && !args.includes('--cookies')) {
+    args.push('--cookies', cookiesPath);
+  }
+  const proxyUrl = process.env.YTDLP_PROXY?.trim();
+  if (proxyUrl && !args.includes('--proxy')) {
+    args.push('--proxy', proxyUrl);
+  }
+}
+
+function classifyYtdlpFailureCode(stderrLog: string): string | null {
+  const lower = stderrLog.toLowerCase();
+  if (
+    lower.includes('sign in to confirm') ||
+    lower.includes("not a bot") ||
+    lower.includes('bot verification')
+  ) {
+    return 'YOUTUBE_BOT_CHECK';
+  }
+  if (
+    lower.includes('sign in to confirm your age') ||
+    lower.includes('age-restricted') ||
+    lower.includes('members-only')
+  ) {
+    return 'AGE_RESTRICTED';
+  }
+  if (
+    lower.includes('video unavailable') ||
+    lower.includes('private video') ||
+    lower.includes('this video has been removed') ||
+    lower.includes('not available in your country') ||
+    lower.includes('copyright')
+  ) {
+    return 'MEDIA_UNAVAILABLE';
+  }
+  if (lower.includes('timed out')) {
+    return 'UPSTREAM_TIMEOUT';
+  }
+  return null;
+}
+
+function isRetryableYoutubeClientError(stderrLog: string): boolean {
+  const lower = stderrLog.toLowerCase();
+  return (
+    lower.includes('sign in to confirm') ||
+    lower.includes('not a bot') ||
+    lower.includes('http error 403') ||
+    lower.includes('requested format is not available') ||
+    lower.includes('failed to extract any player response') ||
+    lower.includes('no supported javascript runtime')
+  );
+}
+
+async function fetchYoutubeOembedFallback(url: string): Promise<YtdlpVideoInfo | null> {
+  if (!isYoutubeUrl(url)) return null;
+  try {
+    const endpoint = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+    const res = await fetch(endpoint, {
+      signal: AbortSignal.timeout(5000),
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data && typeof data.title === 'string' && data.title.trim()) {
+      return {
+        title: data.title.trim(),
+        thumbnail: typeof data.thumbnail_url === 'string' ? data.thumbnail_url : undefined,
+      };
+    }
+  } catch {
+    // Ignore oEmbed network errors cleanly
+  }
+  return null;
+}
+
 function isTemporaryArtifact(filename: string): boolean {
   if (filename === 'output.zip' || filename.startsWith('.')) return true;
   if (
@@ -117,48 +214,62 @@ export interface YtdlpVideoInfo {
 }
 
 export async function getVideoInfo(url: string): Promise<YtdlpVideoInfo> {
-  return new Promise((resolve, reject) => {
-    const args = ['--dump-json', '--no-playlist', '--no-warnings', '--socket-timeout', '5'];
-    if (env.FFMPEG_PATH) {
-      args.push('--ffmpeg-location', env.FFMPEG_PATH);
-    }
-    args.push('--', url);
-
-    const ytdlp = cp.spawn(env.YTDLP_PATH, args);
-    const timeout = setTimeout(() => {
-      try {
-        ytdlp.kill('SIGKILL');
-      } catch {}
-      reject(new Error('yt-dlp timed out fetching video info'));
-    }, 8000);
-
-    let output = '';
-    ytdlp.stdout.on('data', chunk => output += chunk.toString());
-    ytdlp.on('close', code => {
-      clearTimeout(timeout);
-      if (code !== 0) return reject(new Error('yt-dlp failed to fetch video info'));
-      try {
-        const t = JSON.parse(output.trim());
-        const isIg = url.includes('instagram.com') || url.includes('instagr.am');
-        resolve({
-          title: t.title || (typeof t.description === 'string' && t.description.trim() ? t.description.trim().slice(0, 80) : isIg ? 'Instagram Media' : t.title),
-          thumbnail: t.thumbnail || t.thumbnails?.[0]?.url,
-          duration: t.duration,
-        });
-      } catch (e) {
-        reject(new Error('Failed to parse yt-dlp JSON'));
+  try {
+    return await new Promise<YtdlpVideoInfo>((resolve, reject) => {
+      const args = ['--dump-json', '--no-playlist', '--no-warnings', '--socket-timeout', '10'];
+      appendOptionalRuntimeArgs(args);
+      if (env.FFMPEG_PATH) {
+        args.push('--ffmpeg-location', env.FFMPEG_PATH);
       }
+      args.push('--', url);
+
+      const ytdlp = cp.spawn(env.YTDLP_PATH, args);
+      const timeout = setTimeout(() => {
+        try {
+          ytdlp.kill('SIGKILL');
+        } catch {}
+        reject(new Error('yt-dlp timed out fetching video info'));
+      }, 20000);
+
+      let output = '';
+      let stderr = '';
+      ytdlp.stdout.on('data', chunk => output += chunk.toString());
+      ytdlp.stderr?.on('data', chunk => stderr += chunk.toString());
+      ytdlp.on('close', code => {
+        clearTimeout(timeout);
+        if (code !== 0) {
+          return reject(new Error(`yt-dlp failed to fetch video info${stderr ? `: ${stderr.slice(0, 180)}` : ''}`));
+        }
+        try {
+          const t = JSON.parse(output.trim());
+          const isIg = url.includes('instagram.com') || url.includes('instagr.am');
+          resolve({
+            title: t.title || (typeof t.description === 'string' && t.description.trim() ? t.description.trim().slice(0, 80) : isIg ? 'Instagram Media' : t.title),
+            thumbnail: t.thumbnail || t.thumbnails?.[0]?.url,
+            duration: t.duration,
+          });
+        } catch {
+          reject(new Error('Failed to parse yt-dlp JSON'));
+        }
+      });
+      ytdlp.on('error', err => {
+        clearTimeout(timeout);
+        reject(err);
+      });
     });
-    ytdlp.on('error', err => {
-      clearTimeout(timeout);
-      reject(err);
-    });
-  });
+  } catch (err) {
+    const oembedFallback = await fetchYoutubeOembedFallback(url);
+    if (oembedFallback) {
+      return oembedFallback;
+    }
+    throw err;
+  }
 }
 
 export async function getPlaylistInfo(url: string): Promise<YtdlpPlaylistInfo[]> {
   return new Promise((resolve, reject) => {
-    const args = ['--dump-json', '--flat-playlist', '--no-warnings', '--socket-timeout', '5'];
+    const args = ['--dump-json', '--flat-playlist', '--no-warnings', '--socket-timeout', '10'];
+    appendOptionalRuntimeArgs(args);
     if (env.FFMPEG_PATH) {
       args.push('--ffmpeg-location', env.FFMPEG_PATH);
     }
@@ -170,13 +281,17 @@ export async function getPlaylistInfo(url: string): Promise<YtdlpPlaylistInfo[]>
         ytdlp.kill('SIGKILL');
       } catch {}
       reject(new Error('yt-dlp timed out fetching playlist info'));
-    }, 8000);
+    }, 25000);
 
     let output = '';
+    let stderr = '';
     ytdlp.stdout.on('data', chunk => output += chunk.toString());
+    ytdlp.stderr?.on('data', chunk => stderr += chunk.toString());
     ytdlp.on('close', code => {
       clearTimeout(timeout);
-      if (code !== 0) return reject(new Error('yt-dlp failed to fetch playlist info'));
+      if (code !== 0) {
+        return reject(new Error(`yt-dlp failed to fetch playlist info${stderr ? `: ${stderr.slice(0, 180)}` : ''}`));
+      }
       try {
         const lines = output.trim().split('\n');
         const tracks = lines.filter(l => l.trim().length > 0).map(line => JSON.parse(line));
@@ -265,19 +380,19 @@ export function executeYtdlp(jobDir: string, url: string, args: string[]): Reada
 
         const filesBefore = new Set(listCompletedMediaFiles(jobDir));
         const isInstagram = url.includes('instagram.com') || url.includes('instagr.am');
-        const ytdlpArgs = [...args];
+        const baseArgs = [...args];
 
         if (isInstagram) {
-          if (!ytdlpArgs.includes('-i') && !ytdlpArgs.includes('--ignore-errors')) {
-            ytdlpArgs.push('-i');
+          if (!baseArgs.includes('-i') && !baseArgs.includes('--ignore-errors')) {
+            baseArgs.push('-i');
           }
-          const outIdx = ytdlpArgs.indexOf('-o');
-          if (outIdx !== -1 && outIdx + 1 < ytdlpArgs.length) {
-            ytdlpArgs.splice(outIdx + 1, 1, '%(title).120s [%(id)s].%(ext)s');
+          const outIdx = baseArgs.indexOf('-o');
+          if (outIdx !== -1 && outIdx + 1 < baseArgs.length) {
+            baseArgs.splice(outIdx + 1, 1, '%(title).120s [%(id)s].%(ext)s');
           }
-          const fmtIdx = ytdlpArgs.indexOf('-f');
-          if (fmtIdx !== -1 && fmtIdx + 1 < ytdlpArgs.length && !ytdlpArgs.includes('-x')) {
-            ytdlpArgs.splice(
+          const fmtIdx = baseArgs.indexOf('-f');
+          if (fmtIdx !== -1 && fmtIdx + 1 < baseArgs.length && !baseArgs.includes('-x')) {
+            baseArgs.splice(
               fmtIdx + 1,
               1,
               'best[format_id!*=dash][acodec!=none]/best[format_id!*=dash]+bestaudio/best[format_id!*=dash]/bestvideo[vcodec^=avc1]+bestaudio/bestvideo+bestaudio/best'
@@ -285,109 +400,142 @@ export function executeYtdlp(jobDir: string, url: string, args: string[]): Reada
           }
         }
 
-        if (env.FFMPEG_PATH && !ytdlpArgs.includes('--ffmpeg-location')) {
-          ytdlpArgs.push('--ffmpeg-location', env.FFMPEG_PATH);
+        appendOptionalRuntimeArgs(baseArgs);
+        if (env.FFMPEG_PATH && !baseArgs.includes('--ffmpeg-location')) {
+          baseArgs.push('--ffmpeg-location', env.FFMPEG_PATH);
         }
-        if (!ytdlpArgs.includes('--socket-timeout')) {
-          ytdlpArgs.push('--socket-timeout', '15');
+        if (!baseArgs.includes('--socket-timeout')) {
+          baseArgs.push('--socket-timeout', '15');
         }
-        if (!ytdlpArgs.includes('--retries')) {
-          ytdlpArgs.push('--retries', '3');
+        if (!baseArgs.includes('--retries')) {
+          baseArgs.push('--retries', '3');
         }
-        if (!ytdlpArgs.includes('--extractor-retries')) {
-          ytdlpArgs.push('--extractor-retries', '3');
+        if (!baseArgs.includes('--extractor-retries')) {
+          baseArgs.push('--extractor-retries', '3');
         }
-        ytdlpArgs.push('--no-warnings', '--newline', '--progress', '--', url);
+        baseArgs.push('--no-warnings', '--newline', '--progress');
 
-        if (isCancelled) {
-          markExited();
-          return;
-        }
-
-        const ytdlp = cp.spawn(env.YTDLP_PATH, ytdlpArgs, { cwd: jobDir });
-        ytdlpProc = ytdlp;
-
-        ytdlp.on('error', () => {
-          markExited();
-          if (isCancelled) return;
-        });
-        ytdlp.stdin?.on('error', () => {});
-        ytdlp.stdout?.on('error', () => {});
-        ytdlp.stderr?.on('error', () => {});
-
-        if (isCancelled) {
-          await terminateProcess();
-          return;
-        }
-
-        let activityTimer: NodeJS.Timeout | null = null;
-        const resetActivityTimer = (ms = 45000) => {
-          if (activityTimer) clearTimeout(activityTimer);
-          activityTimer = setTimeout(() => {
-            if (!hasExited && ytdlp) {
-              try {
-                ytdlp.kill('SIGKILL');
-              } catch {}
-            }
-          }, ms);
-        };
-        resetActivityTimer(45000);
-        
-        let stderrLog = '';
-        
-        ytdlp.stdout?.on('data', (chunk) => {
-          resetActivityTimer(45000);
-          if (isCancelled) return;
-          const lines = chunk.toString().split(/[\r\n]+/);
-          for (const line of lines) {
-            const match = line.match(/\[download\]\s+(\d+\.\d+)%/);
-            if (match) {
-              try {
-                controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ progress: parseFloat(match[1]) })}\n\n`));
-              } catch {}
-            }
+        const runAttempt = async (extraArgs: string[]): Promise<{ stderrLog: string; timedOut: boolean }> => {
+          if (isCancelled) {
+            markExited();
+            return { stderrLog: '', timedOut: false };
           }
-        });
+          hasExited = false;
+          terminatePromise = null;
+          const attemptArgs = [...baseArgs, ...extraArgs, '--', url];
+          const ytdlp = cp.spawn(env.YTDLP_PATH, attemptArgs, { cwd: jobDir });
+          ytdlpProc = ytdlp;
 
-        ytdlp.stderr?.on('data', chunk => {
-          resetActivityTimer(45000);
-          stderrLog += chunk.toString();
-        });
-
-        ytdlp.stdout?.on('error', () => {});
-        ytdlp.stderr?.on('error', () => {});
-
-        ytdlp.on('exit', () => {
-          if (activityTimer) clearTimeout(activityTimer);
-          markExited();
-        });
-
-        await new Promise((resolve, reject) => {
-          ytdlp.on('close', code => {
+          let timedOut = false;
+          let activityTimer: NodeJS.Timeout | null = null;
+          const resetActivityTimer = (ms = 90000) => {
             if (activityTimer) clearTimeout(activityTimer);
-            markExited();
-            if (isCancelled) {
-              resolve(null);
-              return;
-            }
-            const filesAfter = listCompletedMediaFiles(jobDir);
-            const downloadedNewFile = filesAfter.some((f) => !filesBefore.has(f));
-            if (code !== 0 && !downloadedNewFile) {
-              reject(new Error(`yt-dlp error: ${stderrLog.substring(0, 200) || 'process terminated'}`));
-            } else {
-              resolve(null);
+            activityTimer = setTimeout(() => {
+              if (!hasExited && ytdlp) {
+                timedOut = true;
+                try {
+                  ytdlp.kill('SIGKILL');
+                } catch {}
+              }
+            }, ms);
+          };
+          resetActivityTimer(90000);
+
+          let stderrLog = '';
+
+          ytdlp.stdin?.on('error', () => {});
+          ytdlp.stdout?.on('data', (chunk) => {
+            resetActivityTimer(90000);
+            if (isCancelled) return;
+            const lines = chunk.toString().split(/[\r\n]+/);
+            for (const line of lines) {
+              const match = line.match(/\[download\]\s+(\d+\.\d+)%/);
+              if (match) {
+                try {
+                  controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ progress: parseFloat(match[1]) })}\n\n`));
+                } catch {}
+              }
             }
           });
-          ytdlp.on('error', err => {
+          ytdlp.stderr?.on('data', (chunk) => {
+            resetActivityTimer(90000);
+            stderrLog += chunk.toString();
+          });
+          ytdlp.stdout?.on('error', () => {});
+          ytdlp.stderr?.on('error', () => {});
+
+          ytdlp.on('exit', () => {
             if (activityTimer) clearTimeout(activityTimer);
             markExited();
-            if (isCancelled) {
-              resolve(null);
-              return;
-            }
-            reject(err);
           });
-        });
+
+          if (isCancelled) {
+            await terminateProcess();
+            return { stderrLog, timedOut };
+          }
+
+          await new Promise<void>((resolve, reject) => {
+            ytdlp.on('close', (code) => {
+              if (activityTimer) clearTimeout(activityTimer);
+              markExited();
+              if (isCancelled) {
+                resolve();
+                return;
+              }
+              const filesAfter = listCompletedMediaFiles(jobDir);
+              const downloadedNewFile = filesAfter.some((f) => !filesBefore.has(f));
+              if (code !== 0 && !downloadedNewFile) {
+                const detail = timedOut ? 'yt-dlp timed out waiting for upstream media' : stderrLog.substring(0, 220) || 'process terminated';
+                reject(Object.assign(new Error(`yt-dlp error: ${detail}`), { stderrLog: timedOut ? `${stderrLog}\ntimed out` : stderrLog }));
+              } else {
+                resolve();
+              }
+            });
+            ytdlp.on('error', (err) => {
+              if (activityTimer) clearTimeout(activityTimer);
+              markExited();
+              if (isCancelled) {
+                resolve();
+                return;
+              }
+              reject(err);
+            });
+          });
+
+          return { stderrLog, timedOut };
+        };
+
+        try {
+          await runAttempt([]);
+        } catch (firstErr: unknown) {
+          const firstStderr =
+            (firstErr && typeof firstErr === 'object' && 'stderrLog' in firstErr
+              ? String((firstErr as { stderrLog?: string }).stderrLog ?? '')
+              : '') ||
+            (firstErr instanceof Error ? firstErr.message : '');
+
+          if (!isCancelled && isYoutubeUrl(url) && isRetryableYoutubeClientError(firstStderr)) {
+            try {
+              await runAttempt(['--extractor-args', 'youtube:player_client=tv_simply,android_vr,web_embedded']);
+            } catch (retryErr: unknown) {
+              const retryStderr =
+                (retryErr && typeof retryErr === 'object' && 'stderrLog' in retryErr
+                  ? String((retryErr as { stderrLog?: string }).stderrLog ?? '')
+                  : '') || firstStderr;
+              const code = classifyYtdlpFailureCode(`${firstStderr}\n${retryStderr}`);
+              if (code) {
+                throw new Error(`[SAFE:${code}] ${retryErr instanceof Error ? retryErr.message : 'yt-dlp failed'}`);
+              }
+              throw retryErr;
+            }
+          } else {
+            const code = classifyYtdlpFailureCode(firstStderr);
+            if (code) {
+              throw new Error(`[SAFE:${code}] ${firstErr instanceof Error ? firstErr.message : 'yt-dlp failed'}`);
+            }
+            throw firstErr;
+          }
+        }
 
         if (!isCancelled) {
           ensurePlayableMp4Files(jobDir);

@@ -86,6 +86,28 @@ function handleAgentContentNegotiation(req: NextRequest): NextResponse {
   return res;
 }
 
+function isValidHostHeader(raw: string): boolean {
+  const parts = raw.split(':');
+  if (parts.length > 2) return false;
+  const host = parts[0];
+  const port = parts[1];
+  if (!host || !/^[a-zA-Z0-9.-]+$/.test(host)) return false;
+  if (port !== undefined && !/^\d{1,5}$/.test(port)) return false;
+  return true;
+}
+
+function resolveRequestOrigin(req: NextRequest): string {
+  const forwardedHost = req.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
+  if (forwardedHost && isValidHostHeader(forwardedHost)) {
+    const rawProto = req.headers.get('x-forwarded-proto')?.split(',')[0]?.trim().toLowerCase();
+    const proto = rawProto === 'http' || rawProto === 'https'
+      ? rawProto
+      : req.nextUrl.protocol.replace(':', '') || 'https';
+    return `${proto}://${forwardedHost}`;
+  }
+  return req.nextUrl.origin;
+}
+
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
@@ -95,7 +117,7 @@ export function middleware(req: NextRequest) {
 
   // ── CORS & Preflight (OPTIONS) ─────────────────────────────────────────
   const origin = req.headers.get('origin');
-  const allowedOrigin = process.env.ALLOWED_ORIGIN || req.nextUrl.origin;
+  const allowedOrigin = process.env.ALLOWED_ORIGIN || resolveRequestOrigin(req);
 
   if (req.method === 'OPTIONS') {
     // If request has an Origin header that doesn't match allowed origin, reject CORS preflight (403)

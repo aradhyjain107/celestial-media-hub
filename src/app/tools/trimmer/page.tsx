@@ -12,8 +12,7 @@ import { generateWaveform, WaveformResult } from '../../components/waveform/Wave
 import { TooltipTop } from '../../components/ui/Tooltip';
 import { MasterHeader } from '../../components/ui/MasterHeader';
 import { MasterOptionGrid, OptionItem } from '../../components/ui/MasterOptionGrid';
-import { safeFetch } from '../../../lib/security/safeFetch';
-import { ensureSessionToken, appendAuthToken, useSessionToken } from '../../../lib/security/clientAuth';
+import { authenticatedFetch, appendAuthToken, useSessionToken } from '../../../lib/security/clientAuth';
 
 // Helper to read a File as ArrayBuffer
 const readFileAsArrayBuffer = (file: File): Promise<ArrayBuffer> => {
@@ -214,12 +213,8 @@ export default function AudioTrimmerPage() {
         statusText: files[0]?.size > 50 * 1024 * 1024 ? 'UPLOADING MEDIA PAYLOAD...' : 'INITIALIZING AUDIO PROCESSOR...',
       });
 
-      const authToken = await ensureSessionToken();
-      const res = await safeFetch('/api/audio-trim', {
+      const res = await authenticatedFetch('/api/audio-trim', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-        },
         body: formData,
       });
 

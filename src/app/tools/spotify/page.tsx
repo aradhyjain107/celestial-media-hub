@@ -17,8 +17,7 @@ const FORMATS = ['mp3', 'm4a', 'wav'] as const;
 const QUALITIES = ['128', '192', '256', '320'] as const;
 
 import { useJob } from '../../context/GlobalJobContext';
-import { safeFetch } from '../../../lib/security/safeFetch';
-import { ensureSessionToken, appendAuthToken, useSessionToken } from '../../../lib/security/clientAuth';
+import { authenticatedFetch, appendAuthToken, getAuthTokenSync, useSessionToken } from '../../../lib/security/clientAuth';
 
 export default function SpotifyConverter() {
   const { jobState, startJob, updateJob, clearJob } = useJob('spotify');
@@ -80,12 +79,10 @@ export default function SpotifyConverter() {
     setUrlError(null);
     updateJob({ statusText: 'EXTRACTING PLAYLIST...', status: 'processing' });
     try {
-      const authToken = await ensureSessionToken();
-      const res = await safeFetch(`${process.env.NEXT_PUBLIC_API_BASE_URL ?? ''}/api/spotify-convert?action=extract`, {
+      const res = await authenticatedFetch(`${process.env.NEXT_PUBLIC_API_BASE_URL ?? ''}/api/spotify-convert?action=extract`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
         },
         body: JSON.stringify({ url }),
       });
@@ -132,12 +129,10 @@ export default function SpotifyConverter() {
         statusText: `INITIALIZING SPOTIFY EXTRACTION (${selectedTrackIds.size} TRACKS)...`,
       });
 
-      const authToken = await ensureSessionToken();
-      const res = await safeFetch(`${process.env.NEXT_PUBLIC_API_BASE_URL ?? ''}/api/spotify-convert`, {
+      const res = await authenticatedFetch(`${process.env.NEXT_PUBLIC_API_BASE_URL ?? ''}/api/spotify-convert`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
         },
         body: JSON.stringify(payload),
       });
@@ -148,7 +143,8 @@ export default function SpotifyConverter() {
         return;
       }
       const { jobId } = json;
-      const es = new EventSource(`${process.env.NEXT_PUBLIC_API_BASE_URL ?? ''}/api/spotify-convert?jobId=${jobId}&token=${encodeURIComponent(authToken)}`);
+      const latestToken = getAuthTokenSync();
+      const es = new EventSource(`${process.env.NEXT_PUBLIC_API_BASE_URL ?? ''}/api/spotify-convert?jobId=${jobId}&token=${encodeURIComponent(latestToken)}`);
       startJob(es);
     } catch (err: any) {
       updateJob({ status: 'error', statusText: `ERROR: ${err.message || 'Conversion failed'}` });
@@ -157,16 +153,10 @@ export default function SpotifyConverter() {
 
   const handleRetry = async (trackId: string) => {
     try {
-      const hasJwt = sessionToken.split('.').length === 3;
-      const authToken =
-        hasJwt || (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test')
-          ? sessionToken
-          : await ensureSessionToken();
-      await safeFetch(`${process.env.NEXT_PUBLIC_API_BASE_URL ?? ''}/api/spotify-convert/retry`, {
+      await authenticatedFetch(`${process.env.NEXT_PUBLIC_API_BASE_URL ?? ''}/api/spotify-convert/retry`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
         },
         body: JSON.stringify({ trackId }),
       });

@@ -8,8 +8,7 @@ import { getMediaBatchLimit } from '../../../lib/system/hardwareProfiler';
 import { ResizableOptionsPanel } from '../../components/ui/ResizableOptionsPanel';
 import { TooltipTop, TooltipBottom } from '../../components/ui/Tooltip';
 import { MasterHeader } from '../../components/ui/MasterHeader';
-import { safeFetch } from '../../../lib/security/safeFetch';
-import { ensureSessionToken, appendAuthToken, useSessionToken } from '../../../lib/security/clientAuth';
+import { authenticatedFetch, appendAuthToken, useSessionToken } from '../../../lib/security/clientAuth';
 
 function formatSize(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
@@ -265,12 +264,10 @@ export default function UniversalCompressorPage() {
         const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
 
         const requestJsonEstimate = async () => {
-          const authToken = await ensureSessionToken();
-          const res = await fetch(`${apiBase}/api/compress/estimate`, {
+          const res = await authenticatedFetch(`${apiBase}/api/compress/estimate`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${authToken}`,
             },
             body: JSON.stringify({
               videoCodec,
@@ -304,10 +301,8 @@ export default function UniversalCompressorPage() {
                 fd.append('fileKeys', getFileKey(f));
                 fd.append('files', f);
               });
-              const authToken = await ensureSessionToken();
-              const res = await fetch(`${apiBase}/api/compress/estimate`, {
+              const res = await authenticatedFetch(`${apiBase}/api/compress/estimate`, {
                 method: 'POST',
-                headers: { Authorization: `Bearer ${authToken}` },
                 body: fd,
                 signal: uploadCtrl.signal,
               });
@@ -593,12 +588,8 @@ export default function UniversalCompressorPage() {
       });
 
       const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
-      const authToken = await ensureSessionToken();
-      const res = await safeFetch(`${apiBase}/api/compress`, {
+      const res = await authenticatedFetch(`${apiBase}/api/compress`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-        },
         body: formData,
       });
 

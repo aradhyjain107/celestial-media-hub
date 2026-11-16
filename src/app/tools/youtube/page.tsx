@@ -6,7 +6,6 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { ResizableOptionsPanel } from '../../components/ui/ResizableOptionsPanel';
 import { TooltipRight } from '../../components/ui/Tooltip';
 import { MasterHeader } from '../../components/ui/MasterHeader';
-import { safeFetch } from '../../../lib/security/safeFetch';
 
 /* ── Format / Quality definitions ── */
 const FORMATS = ['mp3', 'm4a', 'wav', 'mp4'] as const;
@@ -40,7 +39,7 @@ const HISTORY_KEY = 'celestial-yt-history';
 
 import { isValidMediaUrl, detectMediaPlatform } from '../../../schemas/youtube';
 import { useJob } from '../../context/GlobalJobContext';
-import { ensureSessionToken, appendAuthToken, useSessionToken } from '../../../lib/security/clientAuth';
+import { authenticatedFetch, appendAuthToken, useSessionToken } from '../../../lib/security/clientAuth';
 
 export default function YouTubeDownloader() {
   const { jobState, startJob, updateJob, clearJob } = useJob('youtube');
@@ -158,12 +157,7 @@ export default function YouTubeDownloader() {
     try {
       const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
       const action = isPlaylist ? 'playlist-info' : 'info';
-      const authToken = await ensureSessionToken();
-      const res = await safeFetch(`${apiBase}/api/youtube?action=${action}&url=${encodeURIComponent(inputUrl)}`, {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-        },
-      });
+      const res = await authenticatedFetch(`${apiBase}/api/youtube?action=${action}&url=${encodeURIComponent(inputUrl)}`);
 
       if (reqSeq !== fetchSeqRef.current) return;
 
@@ -357,12 +351,10 @@ export default function YouTubeDownloader() {
         payload.urls = effectiveBatchUrls;
       }
 
-      const authToken = await ensureSessionToken();
-      const res = await safeFetch(`${apiBase}/api/youtube`, {
+      const res = await authenticatedFetch(`${apiBase}/api/youtube`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
         },
         body: JSON.stringify(payload),
       });

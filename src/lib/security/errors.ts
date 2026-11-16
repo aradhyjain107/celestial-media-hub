@@ -39,8 +39,42 @@ export function sanitizeError(
   return { error: message, status };
 }
 
+const KNOWN_SAFE_SSE_MESSAGES: ReadonlyMap<string, string> = new Map([
+  [
+    'YOUTUBE_BOT_CHECK',
+    'YouTube blocked automated download from this shared cloud IP (bot verification required). Run Celestial Media Hub locally via Desktop App.',
+  ],
+  [
+    'MEDIA_UNAVAILABLE',
+    'This video is private, deleted, copyright-restricted, or unavailable in the server region.',
+  ],
+  [
+    'AGE_RESTRICTED',
+    'This video requires account sign-in or age verification and cannot be fetched anonymously.',
+  ],
+  [
+    'UPSTREAM_TIMEOUT',
+    'Media extraction timed out on the cloud server. Try audio-only, lower resolution, or run locally via Desktop App.',
+  ],
+]);
+
 /**
- * Returns a sanitized generic SSE error payload string.
+ * Classifies known public upstream failure reasons into allowlisted static client
+ * messages without ever exposing raw error strings, paths, or stack traces.
+ */
+export function resolveSafeSseMessage(err: unknown): string | undefined {
+  const raw = err instanceof Error ? err.message : typeof err === 'string' ? err : '';
+  if (!raw) return undefined;
+  for (const [code, safeMessage] of Array.from(KNOWN_SAFE_SSE_MESSAGES.entries())) {
+    if (raw.includes(`[SAFE:${code}]`)) {
+      return safeMessage;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Returns a sanitized SSE error payload string.
  * Use inside ReadableStream error handlers to avoid leaking internal details.
  *
  * @param err     The caught error.
@@ -48,5 +82,6 @@ export function sanitizeError(
  */
 export function sanitizeSseError(err: unknown, context: string): string {
   console.error(`[${context}] SSE Error:`, err);
-  return `data: ${JSON.stringify({ error: 'Processing failed. Please try again.' })}\n\n`;
+  const safeMessage = resolveSafeSseMessage(err) ?? 'Processing failed. Please try again.';
+  return `data: ${JSON.stringify({ error: safeMessage })}\n\n`;
 }

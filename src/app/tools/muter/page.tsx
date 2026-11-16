@@ -10,8 +10,7 @@ import { ResizableOptionsPanel } from '../../components/ui/ResizableOptionsPanel
 import { TooltipTop, TooltipBottom } from '../../components/ui/Tooltip';
 import { StatusBadge, JobStatus } from '../../components/ui/StatusBadge';
 import { MasterHeader } from '../../components/ui/MasterHeader';
-import { safeFetch } from '../../../lib/security/safeFetch';
-import { ensureSessionToken, appendAuthToken, useSessionToken } from '../../../lib/security/clientAuth';
+import { authenticatedFetch, appendAuthToken, useSessionToken } from '../../../lib/security/clientAuth';
 
 
 type MuteMode = 'remove' | 'silence';
@@ -94,12 +93,8 @@ export default function VideoMuter() {
         statusText: files[0]?.size > 50 * 1024 * 1024 ? 'UPLOADING MEDIA PAYLOAD...' : 'INITIALIZING VIDEO MUTER...',
       });
 
-      const authToken = await ensureSessionToken();
-      const res = await safeFetch((process.env.NEXT_PUBLIC_API_BASE_URL ?? '') + '/api/mute', {
+      const res = await authenticatedFetch((process.env.NEXT_PUBLIC_API_BASE_URL ?? '') + '/api/mute', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-        },
         body: formData,
       });
 

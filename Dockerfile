@@ -1,12 +1,19 @@
 FROM node:20-bookworm-slim
 
-# Install system media binaries: ffmpeg/ffprobe, cwebp, python3 (required by yt-dlp)
+# Install system media binaries: ffmpeg/ffprobe, cwebp, python3 (required by yt-dlp), and deno (yt-dlp JS challenge solver)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     webp \
     python3 \
     ca-certificates \
     curl \
+    unzip \
+  && ARCH="$(dpkg --print-architecture)" \
+  && if [ "$ARCH" = "arm64" ]; then DENO_TARGET="aarch64-unknown-linux-gnu"; else DENO_TARGET="x86_64-unknown-linux-gnu"; fi \
+  && curl -fsSL "https://github.com/denoland/deno/releases/latest/download/deno-${DENO_TARGET}.zip" -o /tmp/deno.zip \
+  && unzip -q /tmp/deno.zip -d /usr/local/bin \
+  && rm -f /tmp/deno.zip \
+  && chmod a+rx /usr/local/bin/deno \
   && rm -rf /var/lib/apt/lists/*
 
 # Install latest official yt-dlp release (>= 2025.12.0 security baseline)
@@ -26,10 +33,10 @@ COPY . .
 RUN JWT_SECRET="build-time-only-jwt-secret-min-32-chars-ok" npm run build \
   && npm prune --omit=dev
 
-# Hugging Face Spaces runs containers as UID 1000 (default `node` user in node:20 image)
-RUN mkdir -p /tmp/celestial \
+# Ensure writable temp and JS/extractor cache dirs for UID 1000 (`node`)
+RUN mkdir -p /tmp/celestial /tmp/.cache /tmp/.deno \
   && chmod +x /app/scripts/docker-entrypoint.sh \
-  && chown -R node:node /app /tmp/celestial
+  && chown -R node:node /app /tmp/celestial /tmp/.cache /tmp/.deno
 
 USER node
 
@@ -39,7 +46,9 @@ ENV NODE_ENV=production \
     FFMPEG_PATH=ffmpeg \
     FFPROBE_PATH=ffprobe \
     YTDLP_PATH=yt-dlp \
-    TEMP_DIR=/tmp/celestial
+    TEMP_DIR=/tmp/celestial \
+    XDG_CACHE_HOME=/tmp/.cache \
+    DENO_DIR=/tmp/.deno
 
 EXPOSE 7860
 

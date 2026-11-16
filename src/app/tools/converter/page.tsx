@@ -13,8 +13,7 @@ import { AudioToVideoStudio } from './components/AudioToVideoStudio';
 import { HardwareBadge } from '../../components/ui/HardwareBadge';
 import { MasterHeader } from '../../components/ui/MasterHeader';
 import { getMediaBatchLimit, getClientHardwareProfile, HardwareProfile } from '../../../lib/system/hardwareProfiler';
-import { safeFetch } from '../../../lib/security/safeFetch';
-import { ensureSessionToken, appendAuthToken, useSessionToken } from '../../../lib/security/clientAuth';
+import { authenticatedFetch, appendAuthToken, useSessionToken } from '../../../lib/security/clientAuth';
 
 /* ── Format definitions ── */
 const VIDEO_FORMATS = ['mp4', 'mkv', 'mov', 'webm', 'gif'] as const;
@@ -374,16 +373,14 @@ export default function UniversalConverter() {
       });
 
       const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
-      const authToken = await ensureSessionToken();
       let res: Response;
       const isLargeSingleFile = files.length === 1 && !isAudioToVideoMode && (files[0].size > 50 * 1024 * 1024);
 
       if (isLargeSingleFile) {
         // Zero-overhead direct streaming for large files > 50MB (bypasses 2GB undici multipart buffer bug)
-        res = await safeFetch(`${apiBase}/api/convert`, {
+        res = await authenticatedFetch(`${apiBase}/api/convert`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${authToken}`,
             'Content-Type': 'application/octet-stream',
             'x-file-name': encodeURIComponent(files[0].name),
             'x-output-format': outputFormat,
@@ -396,11 +393,8 @@ export default function UniversalConverter() {
           body: files[0],
         });
       } else {
-        res = await safeFetch(`${apiBase}/api/convert`, {
+        res = await authenticatedFetch(`${apiBase}/api/convert`, {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${authToken}`,
-          },
           body: formData,
         });
       }
