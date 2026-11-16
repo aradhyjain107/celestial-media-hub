@@ -115,10 +115,18 @@ export async function POST(req: NextRequest) {
 
     let activeReader: ReadableStreamDefaultReader | null = null;
     let activeStream: ReadableStream | null = null;
+    let heartbeatTimer: NodeJS.Timeout | null = null;
     let cleanedUp = false;
+    const stopHeartbeat = () => {
+      if (heartbeatTimer) {
+        clearInterval(heartbeatTimer);
+        heartbeatTimer = null;
+      }
+    };
     const handleAbort = async (reason?: any) => {
       if (cleanedUp) return;
       cleanedUp = true;
+      stopHeartbeat();
       if (activeReader) {
         try {
           await activeReader.cancel(reason);
@@ -146,6 +154,23 @@ export async function POST(req: NextRequest) {
     const stream = new ReadableStream({
       async start(controller) {
         try {
+          // Immediately flush SSE headers and keep Cloudflare/Render connections alive while yt-dlp warms up.
+          controller.enqueue(new TextEncoder().encode(': connected\n\n'));
+          heartbeatTimer = setInterval(() => {
+            if (cleanedUp || req.signal?.aborted) {
+              stopHeartbeat();
+              return;
+            }
+            try {
+              controller.enqueue(new TextEncoder().encode(': keepalive\n\n'));
+            } catch {
+              stopHeartbeat();
+            }
+          }, 5000);
+          if (typeof heartbeatTimer.unref === 'function') {
+            heartbeatTimer.unref();
+          }
+
           let lastError: unknown = null;
           let idx = -1;
           for (const targetUrl of batchList) {
@@ -250,6 +275,7 @@ export async function POST(req: NextRequest) {
             cleanedUp = true;
           }
         } finally {
+          stopHeartbeat();
           if (req.signal) {
             req.signal.removeEventListener('abort', onAbort);
           }
