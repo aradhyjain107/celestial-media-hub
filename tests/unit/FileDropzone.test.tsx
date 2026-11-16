@@ -13,6 +13,7 @@ describe('FileDropzone', () => {
     const file = new File(['mock content'], 'video.mp4', { type: 'video/mp4' });
     const input = screen.getByTestId('file-input');
     
+    fireEvent.input(input, { target: { files: [file] } });
     fireEvent.change(input, { target: { files: [file] } });
     
     expect(onSelect).toHaveBeenCalledTimes(1);

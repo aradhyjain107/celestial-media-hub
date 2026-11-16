@@ -27,7 +27,10 @@ const IMAGE_FORMATS = ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'tiff', 'avif'];
 async function buildConvertArgs(inputPath: string, opts: any, preset: string): Promise<{ args: string[]; strategy: string; reason: string }> {
   const args: string[] = ['-i', inputPath, '-threads', getOptimalFfmpegThreads()];
 
-  if (!AUDIO_ONLY_FORMATS.includes(opts.outputFormat)) {
+  const isAudioTarget = AUDIO_ONLY_FORMATS.includes(opts.outputFormat);
+  const isVideoContainerSupportingH264 = !isAudioTarget && !opts.isImage && !opts.isGif && opts.outputFormat !== 'webm';
+
+  if (isVideoContainerSupportingH264) {
     const isVTB = process.platform === 'darwin' && !process.env.VITEST;
     const vEncoder = isVTB ? 'h264_videotoolbox' : 'libx264';
     const vEncodeFlags = isVTB

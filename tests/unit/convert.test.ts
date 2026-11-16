@@ -228,5 +228,45 @@ describe('/api/convert POST', () => {
     expect(text).toContain('"status":"complete"');
     expect(text).toMatch(/"downloadUrl":"\/api\/download\?jobId=[a-zA-Z0-9\-]+&file=output\.png"/);
   });
+
+  test('ignores H.264/AAC preset overrides when outputFormat is gif, webp, or webm', async () => {
+    for (const [inputName, outputFormat, expectedCodecFlag] of [
+      ['sample.mp4', 'gif', 'gif'],
+      ['sample.png', 'webp', '-vframes'],
+      ['sample.mp4', 'webm', 'libvpx-vp9'],
+    ] as const) {
+      vi.clearAllMocks();
+      const formData = new FormData();
+      formData.append('preset', 'high');
+      formData.append('outputFormat', outputFormat);
+      formData.append('files', new File(['mock'], inputName, { type: 'application/octet-stream' }));
+
+      const req = {
+        formData: async () => formData,
+        headers: new Headers({ authorization: 'Bearer user_test' }),
+      } as any as NextRequest;
+
+      vi.mocked(tempExt.writeInputFile).mockResolvedValue(`/mock/convertPath/${inputName}`);
+      vi.mocked(ffmpegExt.executeFfmpeg).mockReturnValue(new ReadableStream({
+        start(c) {
+          c.enqueue(new TextEncoder().encode('data: {"progress":100}\n\n'));
+          c.enqueue(new TextEncoder().encode('data: {"status":"done"}\n\n'));
+          c.close();
+        }
+      }));
+
+      const res = await POST(req);
+      const reader = res.body?.getReader();
+      while (reader) {
+        const { done } = await reader.read();
+        if (done) break;
+      }
+
+      const calledArgs = vi.mocked(ffmpegExt.executeFfmpeg).mock.calls[0][1] as string[];
+      expect(calledArgs).toContain(expectedCodecFlag);
+      expect(calledArgs).not.toContain('libx264');
+      expect(calledArgs).not.toContain('aac');
+    }
+  });
 });
 

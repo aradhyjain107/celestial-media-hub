@@ -87,8 +87,12 @@ export function FileDropzone({
         multiple={multiple}
         accept={acceptedTypes.length > 0 ? acceptedTypes.join(',') : undefined}
         onClick={(e) => e.stopPropagation()}
-        onChange={(e) => processFiles(e.target.files)}
-        onInput={(e) => processFiles((e.target as HTMLInputElement).files)}
+        onChange={(e) => {
+          processFiles(e.target.files);
+          try {
+            e.currentTarget.value = '';
+          } catch {}
+        }}
         data-testid={testId === 'dropzone' ? 'file-input' : `${testId}-input`}
       />
       <button
