@@ -260,20 +260,22 @@ export function buildStrategyArgs(
     case 'encode': {
       const videoArgs = buildVideoEncodeArgs(outputFormat, resolution, speed, opts.isGif);
       args.push(...videoArgs);
-      const targetAudioCodec = getDefaultAudioCodec(outputFormat);
-      if (!stripAudio) args.push('-c:a', targetAudioCodec);
+      if (!opts.isGif) {
+        const targetAudioCodec = getDefaultAudioCodec(outputFormat);
+        if (!stripAudio) args.push('-c:a', targetAudioCodec);
+      }
       break;
     }
   }
 
-  // Strip audio stream entirely (overrides any -c:a flags above)
-  if (stripAudio) args.push('-an');
+  // Strip audio stream entirely (overrides any -c:a flags above; GIF has no audio track)
+  if (stripAudio || opts.isGif) args.push('-an');
 
   // Strip metadata
   if (stripMetadata) args.push('-map_metadata', '-1');
 
   // Speed filter (requires re-encode — already forced strategy to 'encode')
-  if (speed !== 1 && strategy === 'encode') {
+  if (speed !== 1 && strategy === 'encode' && !opts.isGif) {
     const audioFilters = buildAudioSpeedFilter(speed);
     if (!stripAudio) args.push('-af', audioFilters);
   }
@@ -285,7 +287,10 @@ export function buildStrategyArgs(
       const videoSpeed = 1 / speed;
       gifFilters.push(`setpts=${videoSpeed.toFixed(4)}*(PTS-STARTPTS)`);
     }
-    gifFilters.push('fps=15,scale=720:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse');
+    const gifWidthMap: Record<string, string> = { '1080p': '1080', '720p': '720', '480p': '480', '360p': '360' };
+    // eslint-disable-next-line security/detect-object-injection
+    const gifWidth = gifWidthMap[resolution] || '720';
+    gifFilters.push(`fps=15,scale=${gifWidth}:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse`);
     args.push('-vf', gifFilters.join(','), '-loop', '0');
   }
 
@@ -313,6 +318,7 @@ function getDefaultAudioCodec(outputFormat: string): string {
 }
 
 function getDefaultVideoCodec(outputFormat: string): string {
+  if (outputFormat === 'gif') return 'gif';
   if (outputFormat === 'webm') return 'libvpx-vp9';
   if (process.platform === 'darwin' && !process.env.VITEST) return 'h264_videotoolbox';
   return 'libx264';
@@ -324,7 +330,9 @@ function buildVideoEncodeArgs(outputFormat: string, resolution: string, speed: n
 
   args.push('-c:v', codec);
 
-  if (codec === 'h264_videotoolbox') {
+  if (codec === 'gif') {
+    return args;
+  } else if (codec === 'h264_videotoolbox') {
     args.push('-b:v', '6M', '-pix_fmt', 'yuv420p');
   } else if (codec === 'libx264') {
     args.push('-preset', 'ultrafast', '-profile:v', 'high', '-level', '4.2', '-pix_fmt', 'yuv420p');

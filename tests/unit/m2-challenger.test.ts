@@ -371,7 +371,24 @@ describe('Milestone R2 Empirical Challenge Test Suite (All 6 Core Media Tools)',
   // ==========================================
   describe('6. Spotify Converter (/api/spotify-convert)', () => {
     it('Handles single track and playlist URL inputs cleanly with sanitized error or playlist payload', async () => {
-      const req = new NextRequest('http://localhost:3000/api/spotify-convert', {
+      const extractReq = new NextRequest('http://localhost:3000/api/spotify-convert', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer user_m2_test',
+        },
+        body: JSON.stringify({
+          action: 'extract',
+          url: 'https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT',
+        }),
+      });
+
+      const extractRes = await spotifyHandler(extractReq);
+      expect([200, 400, 500]).toContain(extractRes.status);
+      const extractBody = await extractRes.json();
+      expect(extractBody.playlist || extractBody.error).toBeDefined();
+
+      const streamReq = new NextRequest('http://localhost:3000/api/spotify-convert', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -382,10 +399,19 @@ describe('Milestone R2 Empirical Challenge Test Suite (All 6 Core Media Tools)',
         }),
       });
 
-      const res = await spotifyHandler(req);
-      expect([200, 400, 500]).toContain(res.status);
-      const body = await res.json();
-      expect(body.playlist || body.error).toBeDefined();
+      const streamRes = await spotifyHandler(streamReq);
+      expect([200, 400, 500]).toContain(streamRes.status);
+      const ct = streamRes.headers.get('content-type') || '';
+      if (ct.includes('text/event-stream') && streamRes.body) {
+        const reader = streamRes.body.getReader();
+        const first = await reader.read();
+        const chunkText = new TextDecoder().decode(first.value);
+        expect(chunkText.length).toBeGreaterThan(0);
+        await reader.cancel();
+      } else {
+        const streamBody = await streamRes.json();
+        expect(streamBody.playlist || streamBody.error).toBeDefined();
+      }
     }, 30000);
   });
 });

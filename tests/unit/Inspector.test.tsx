@@ -249,7 +249,7 @@ describe('Media Inspector & Inspection UI Suite', () => {
       expect(decision.reason).toContain('GIF requires palette generation');
 
       const args = buildStrategyArgs('encode', {
-        speed: 1,
+        speed: 2,
         resolution: 'original',
         stripAudio: false,
         stripMetadata: false,
@@ -257,6 +257,11 @@ describe('Media Inspector & Inspection UI Suite', () => {
         isGif: true,
       });
 
+      expect(args).toContain('gif');
+      expect(args).toContain('-an');
+      expect(args).not.toContain('libx264');
+      expect(args).not.toContain('aac');
+      expect(args).not.toContain('-af');
       expect(args).toContain('-loop');
       expect(args).toContain('0');
     });

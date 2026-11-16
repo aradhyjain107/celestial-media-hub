@@ -264,12 +264,29 @@ export async function POST(req: NextRequest) {
                 } else {
                   args.push('-c:v', hwEncoder, '-q:v', String(videoCrf));
                 }
+              } else if (videoCodec === 'av1') {
+                if (await isEncoderAvailable('libsvtav1')) {
+                  const svtPresetMap: Record<string, string> = { ultrafast: '10', fast: '8', medium: '6', slow: '4' };
+                  // eslint-disable-next-line security/detect-object-injection
+                  const svtPreset = svtPresetMap[videoPreset] || '6';
+                  args.push('-c:v', 'libsvtav1', '-crf', String(videoCrf), '-preset', svtPreset, '-pix_fmt', 'yuv420p');
+                } else if (await isEncoderAvailable('libaom-av1')) {
+                  const aomCpuUsedMap: Record<string, string> = { ultrafast: '8', fast: '7', medium: '6', slow: '4' };
+                  // eslint-disable-next-line security/detect-object-injection
+                  const cpuUsed = aomCpuUsedMap[videoPreset] || '6';
+                  args.push('-c:v', 'libaom-av1', '-crf', String(videoCrf), '-b:v', '0', '-cpu-used', cpuUsed, '-row-mt', '1', '-pix_fmt', 'yuv420p');
+                } else {
+                  args.push('-c:v', 'libx264', '-crf', String(videoCrf), '-preset', videoPreset, '-pix_fmt', 'yuv420p');
+                }
+              } else if (videoCodec === 'vp9') {
+                const vp9CpuUsedMap: Record<string, string> = { ultrafast: '5', fast: '4', medium: '2', slow: '1' };
+                // eslint-disable-next-line security/detect-object-injection
+                const cpuUsed = vp9CpuUsedMap[videoPreset] || '2';
+                args.push('-c:v', 'libvpx-vp9', '-crf', String(videoCrf), '-b:v', '0', '-deadline', 'good', '-cpu-used', cpuUsed, '-pix_fmt', 'yuv420p');
               } else {
                 const codecMap: Record<string, string> = {
                   hevc: 'libx265',
                   h264: 'libx264',
-                  av1: 'libsvtav1',
-                  vp9: 'libvpx-vp9'
                 };
                 // eslint-disable-next-line security/detect-object-injection
                 const encoder = codecMap[videoCodec] || 'libx265';

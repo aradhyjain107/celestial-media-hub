@@ -238,7 +238,8 @@ describe('POST /api/compress — Unit Test Suite', () => {
       );
     });
 
-    test('compresses video with AV1 (libsvtav1) and 1080p resolution', async () => {
+    test('compresses video with AV1 (libsvtav1) numeric preset and 1080p resolution', async () => {
+      vi.mocked(ffmpegExt.isEncoderAvailable).mockImplementation(async (enc: string) => enc === 'libsvtav1');
       const formData = new FormData();
       formData.append('videoCodec', 'av1');
       formData.append('videoCrf', '30');
@@ -268,8 +269,48 @@ describe('POST /api/compress — Unit Test Suite', () => {
           '-i', '/mock/compressPath/video.mkv',
           '-c:v', 'libsvtav1',
           '-crf', '30',
-          '-preset', 'medium',
+          '-preset', '6',
+          '-pix_fmt', 'yuv420p',
           '-vf', 'scale=-2:1080',
+          '-c:a', 'aac',
+          '-b:a', '128k',
+          '-movflags', '+faststart',
+          '-y', '/mock/compressPath/compressed_video.mp4'
+        ]
+      );
+    });
+
+    test('falls back to libaom-av1 when libsvtav1 is unavailable', async () => {
+      vi.mocked(ffmpegExt.isEncoderAvailable).mockImplementation(async (enc: string) => enc === 'libaom-av1');
+      const formData = new FormData();
+      formData.append('videoCodec', 'av1');
+      formData.append('videoCrf', '30');
+      formData.append('videoPreset', 'fast');
+      formData.append('files', new File(['mock vid'], 'video.mkv', { type: 'video/x-matroska' }));
+
+      const req = {
+        formData: async () => formData,
+        headers: new Headers({ authorization: 'Bearer user_test' }),
+      } as any as NextRequest;
+
+      vi.mocked(tempExt.writeInputFile).mockResolvedValue('/mock/compressPath/video.mkv');
+      vi.mocked(ffmpegExt.executeFfmpeg).mockReturnValue(new ReadableStream({
+        start(c) { c.enqueue(new TextEncoder().encode('data: {"progress":100}\n\n')); c.close(); }
+      }));
+
+      const res = await POST(req);
+      await readSseResponse(res);
+
+      expect(ffmpegExt.executeFfmpeg).toHaveBeenCalledWith(
+        '/mock/compressPath/video.mkv',
+        [
+          '-i', '/mock/compressPath/video.mkv',
+          '-c:v', 'libaom-av1',
+          '-crf', '30',
+          '-b:v', '0',
+          '-cpu-used', '7',
+          '-row-mt', '1',
+          '-pix_fmt', 'yuv420p',
           '-c:a', 'aac',
           '-b:a', '128k',
           '-movflags', '+faststart',
@@ -310,7 +351,10 @@ describe('POST /api/compress — Unit Test Suite', () => {
           '-i', '/mock/compressPath/mute.mp4',
           '-c:v', 'libvpx-vp9',
           '-crf', '32',
-          '-preset', 'medium',
+          '-b:v', '0',
+          '-deadline', 'good',
+          '-cpu-used', '2',
+          '-pix_fmt', 'yuv420p',
           '-vf', 'scale=-2:480',
           '-an',
           '-movflags', '+faststart',

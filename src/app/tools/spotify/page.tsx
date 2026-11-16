@@ -117,8 +117,13 @@ export default function SpotifyConverter() {
   const handleInitialize = async () => {
     if (selectedTrackIds.size === 0 || processing) return;
     
+    const selectedTracks = tracks
+      .filter((t) => selectedTrackIds.has(t.id))
+      .map((t) => ({ id: t.id, name: t.name }));
+
     const payload = {
       trackIds: Array.from(selectedTrackIds),
+      tracks: selectedTracks,
       format,
       quality,
     };

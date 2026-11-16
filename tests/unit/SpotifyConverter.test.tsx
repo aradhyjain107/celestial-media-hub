@@ -126,6 +126,10 @@ describe('Spotify Converter Component', () => {
 
     fireEvent.click(screen.getByTestId('initialize-btn'));
     await waitFor(() => {
+      const postCall = mockFetch.mock.calls.find(([url]) => String(url).endsWith('/api/spotify-convert'));
+      expect(postCall).toBeDefined();
+      const sentBody = JSON.parse(String((postCall?.[1] as any)?.body || '{}'));
+      expect(sentBody.tracks).toEqual([{ id: 't1', name: 'One' }]);
       const esInstance = (global.EventSource as any).instances[0] as MockEventSource;
       esInstance.emit({ trackId: 't1', status: 'processing' });
       esInstance.emit({ trackId: 't1', status: 'done' });

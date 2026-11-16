@@ -224,6 +224,12 @@ async function scrapeSpotifyTracks(url: string): Promise<{ name: string; tracks:
           trackList.push({ id: track.id || `t-${idx + 1}`, name });
         }
       });
+      if (trackList.length === 0 && (entity?.title || entity?.name)) {
+        const artist = entity.artists?.[0]?.name || entity.subtitle || '';
+        const title = entity.title || entity.name;
+        const name = artist ? `${artist} - ${title}` : title;
+        trackList.push({ id: entity.id || 't-1', name });
+      }
       if (trackList.length > 0) {
         return { name: playlistName, tracks: trackList };
       }
@@ -261,11 +267,20 @@ function createSpotifySSEStream(
   let activeStream: ReadableStream | null = null;
   let cleanedUp = false;
   let isCancelled = false;
+  let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+
+  const stopHeartbeat = () => {
+    if (heartbeatTimer) {
+      clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
+    }
+  };
 
   const handleAbort = async (reason?: any) => {
     if (cleanedUp) return;
     cleanedUp = true;
     isCancelled = true;
+    stopHeartbeat();
     if (activeReader) {
       try {
         await activeReader.cancel(reason);
@@ -294,6 +309,23 @@ function createSpotifySSEStream(
     async start(controller) {
       const encoder = new TextEncoder();
       try {
+        // Flush SSE headers immediately and keep Cloudflare/Render connections alive while yt-dlp searches.
+        controller.enqueue(encoder.encode(': connected\n\n'));
+        heartbeatTimer = setInterval(() => {
+          if (cleanedUp || isCancelled || signal?.aborted) {
+            stopHeartbeat();
+            return;
+          }
+          try {
+            controller.enqueue(encoder.encode(': keepalive\n\n'));
+          } catch {
+            stopHeartbeat();
+          }
+        }, 5000);
+        if (typeof heartbeatTimer.unref === 'function') {
+          heartbeatTimer.unref();
+        }
+
         for (let i = 0; i < tracks.length; i++) {
           if (isCancelled || signal?.aborted || cleanedUp) break;
           // eslint-disable-next-line security/detect-object-injection
@@ -400,6 +432,7 @@ function createSpotifySSEStream(
           cleanedUp = true;
         }
       } finally {
+        stopHeartbeat();
         if (signal) {
           signal.removeEventListener('abort', onAbort);
         }
