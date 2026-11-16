@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import path from 'node:path';
 import { EventEmitter } from 'node:events';
 import cp from 'node:child_process';
 import { NextRequest } from 'next/server';
@@ -7,6 +8,7 @@ import { middleware } from '../../src/middleware';
 import { resolveSafeSseMessage, sanitizeSseError } from '../../src/lib/security/errors';
 import { authenticatedFetch, clearStoredSessionToken } from '../../src/lib/security/clientAuth';
 import { getVideoInfo, executeYtdlp } from '../../src/lib/media/ytdlp';
+import { env } from '../../src/lib/system/env';
 
 describe('YouTube & Session Resilience Suite', () => {
   beforeEach(() => {
@@ -146,6 +148,9 @@ describe('YouTube & Session Resilience Suite', () => {
       }
 
       expect(spawnCalls).toHaveLength(2);
+      expect(spawnCalls[0]).toContain('--ffmpeg-location');
+      expect(spawnCalls[0]).toContain(env.FFMPEG_PATH);
+      expect(path.isAbsolute(env.FFMPEG_PATH)).toBe(true);
       expect(spawnCalls[1]).toContain('--extractor-args');
       expect(chunks).toContain('[SAFE:YOUTUBE_BOT_CHECK]');
 

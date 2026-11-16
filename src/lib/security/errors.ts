@@ -56,6 +56,22 @@ const KNOWN_SAFE_SSE_MESSAGES: ReadonlyMap<string, string> = new Map([
     'UPSTREAM_TIMEOUT',
     'Media extraction timed out on the cloud server. Try audio-only, lower resolution, or run locally via Desktop App.',
   ],
+  [
+    'YOUTUBE_RATE_LIMIT',
+    'YouTube temporarily rate-limited this server IP (HTTP 429). Please wait a few minutes or run locally via Desktop App.',
+  ],
+  [
+    'FORMAT_UNAVAILABLE',
+    'The requested format or resolution is not available for this link. Try another format or quality option.',
+  ],
+  [
+    'POSTPROCESS_FAILED',
+    'Media downloaded, but FFmpeg post-processing failed during conversion or muxing.',
+  ],
+  [
+    'NETWORK_ERROR',
+    'Upstream extractor blocked or failed (HTTP 403 / connection error). Try again or run locally via Desktop App.',
+  ],
 ]);
 
 /**

@@ -20,6 +20,12 @@ function isYoutubeUrl(rawUrl: string): boolean {
   }
 }
 
+function appendFfmpegLocationIfExplicit(args: string[]): void {
+  const ffmpegLoc = env.FFMPEG_PATH?.trim();
+  if (!ffmpegLoc || args.includes('--ffmpeg-location')) return;
+  args.push('--ffmpeg-location', ffmpegLoc);
+}
+
 function appendOptionalRuntimeArgs(args: string[]): void {
   if (!args.includes('--ignore-config')) {
     args.push('--ignore-config');
@@ -39,7 +45,7 @@ function classifyYtdlpFailureCode(stderrLog: string): string | null {
   const lower = stderrLog.toLowerCase();
   if (
     lower.includes('sign in to confirm') ||
-    lower.includes("not a bot") ||
+    lower.includes('not a bot') ||
     lower.includes('bot verification')
   ) {
     return 'YOUTUBE_BOT_CHECK';
@@ -60,8 +66,20 @@ function classifyYtdlpFailureCode(stderrLog: string): string | null {
   ) {
     return 'MEDIA_UNAVAILABLE';
   }
+  if (lower.includes('http error 429') || lower.includes('too many requests')) {
+    return 'YOUTUBE_RATE_LIMIT';
+  }
+  if (lower.includes('requested format is not available') || lower.includes('only images are available')) {
+    return 'FORMAT_UNAVAILABLE';
+  }
+  if (lower.includes('postprocessing:') || lower.includes('ffprobe and ffmpeg not found')) {
+    return 'POSTPROCESS_FAILED';
+  }
   if (lower.includes('timed out')) {
     return 'UPSTREAM_TIMEOUT';
+  }
+  if (lower.includes('http error 403') || lower.includes('unable to extract') || lower.includes('connection reset')) {
+    return 'NETWORK_ERROR';
   }
   return null;
 }
@@ -218,9 +236,7 @@ export async function getVideoInfo(url: string): Promise<YtdlpVideoInfo> {
     return await new Promise<YtdlpVideoInfo>((resolve, reject) => {
       const args = ['--dump-json', '--no-playlist', '--no-warnings', '--socket-timeout', '10'];
       appendOptionalRuntimeArgs(args);
-      if (env.FFMPEG_PATH) {
-        args.push('--ffmpeg-location', env.FFMPEG_PATH);
-      }
+      appendFfmpegLocationIfExplicit(args);
       args.push('--', url);
 
       const ytdlp = cp.spawn(env.YTDLP_PATH, args);
@@ -270,9 +286,7 @@ export async function getPlaylistInfo(url: string): Promise<YtdlpPlaylistInfo[]>
   return new Promise((resolve, reject) => {
     const args = ['--dump-json', '--flat-playlist', '--no-warnings', '--socket-timeout', '10'];
     appendOptionalRuntimeArgs(args);
-    if (env.FFMPEG_PATH) {
-      args.push('--ffmpeg-location', env.FFMPEG_PATH);
-    }
+    appendFfmpegLocationIfExplicit(args);
     args.push('--', url);
 
     const ytdlp = cp.spawn(env.YTDLP_PATH, args);
@@ -401,9 +415,7 @@ export function executeYtdlp(jobDir: string, url: string, args: string[]): Reada
         }
 
         appendOptionalRuntimeArgs(baseArgs);
-        if (env.FFMPEG_PATH && !baseArgs.includes('--ffmpeg-location')) {
-          baseArgs.push('--ffmpeg-location', env.FFMPEG_PATH);
-        }
+        appendFfmpegLocationIfExplicit(baseArgs);
         if (!baseArgs.includes('--socket-timeout')) {
           baseArgs.push('--socket-timeout', '15');
         }

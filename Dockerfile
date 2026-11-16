@@ -43,9 +43,9 @@ USER node
 ENV NODE_ENV=production \
     PORT=7860 \
     HOSTNAME=0.0.0.0 \
-    FFMPEG_PATH=ffmpeg \
-    FFPROBE_PATH=ffprobe \
-    YTDLP_PATH=yt-dlp \
+    FFMPEG_PATH=/usr/bin/ffmpeg \
+    FFPROBE_PATH=/usr/bin/ffprobe \
+    YTDLP_PATH=/usr/local/bin/yt-dlp \
     TEMP_DIR=/tmp/celestial \
     XDG_CACHE_HOME=/tmp/.cache \
     DENO_DIR=/tmp/.deno
