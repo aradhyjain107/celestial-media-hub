@@ -8,6 +8,7 @@ import { getMediaBatchLimit } from '../../../lib/system/hardwareProfiler';
 import { ResizableOptionsPanel } from '../../components/ui/ResizableOptionsPanel';
 import { TooltipTop, TooltipBottom } from '../../components/ui/Tooltip';
 import { MasterHeader } from '../../components/ui/MasterHeader';
+import { HardwareBadge } from '../../components/ui/HardwareBadge';
 import { authenticatedFetch, appendAuthToken, useSessionToken } from '../../../lib/security/clientAuth';
 
 function formatSize(bytes: number): string {
@@ -620,7 +621,7 @@ export default function UniversalCompressorPage() {
         onlyUtilityBar
         toolName="UNIVERSAL COMPRESSOR"
         engineId="FFMPEG-BATCH"
-        hwAccelText="HW ACCEL: AUTO (VIDEOTOOLBOX)"
+        hwAccelText={<HardwareBadge />}
       />
 
       {/* Workspace */}
@@ -980,28 +981,33 @@ export default function UniversalCompressorPage() {
                   />
                 </div>
 
-                <div className="form-group" style={{ paddingTop: '6px' }}>
-                  <label className="cel-check-row" style={{
-                    fontSize: '0.6875rem',
-                    fontFamily: 'var(--font-mono)',
-                    fontWeight: 600,
-                    letterSpacing: '0.06em',
-                    color: 'var(--text-main)',
-                    padding: '10px 14px',
-                    background: 'rgba(15, 15, 18, 0.65)',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                    borderRadius: '6px'
-                  }}>
-                    <input
-                      type="checkbox"
-                      className="cel-check-input"
-                      checked={hardwareAccel}
-                      onChange={e => setHardwareAccel(e.target.checked)}
-                      data-testid="hw-accel-toggle"
-                    />
-                    <span>HARDWARE ACCELERATION (GPU)</span>
-                  </label>
-                </div>
+                {hardwareProfile?.isHardwareAccelerated === true && (
+                  <div className="form-group" style={{ paddingTop: '6px' }}>
+                    <label
+                      className="cel-check-row"
+                      style={{
+                        fontSize: '0.6875rem',
+                        fontFamily: 'var(--font-mono)',
+                        fontWeight: 600,
+                        letterSpacing: '0.06em',
+                        color: 'var(--text-main)',
+                        padding: '10px 14px',
+                        background: 'rgba(15, 15, 18, 0.65)',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        borderRadius: '6px',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        className="cel-check-input"
+                        checked={hardwareAccel}
+                        onChange={e => setHardwareAccel(e.target.checked)}
+                        data-testid="hw-accel-toggle"
+                      />
+                      <span>HARDWARE ACCELERATION (GPU)</span>
+                    </label>
+                  </div>
+                )}
               </motion.div>
             )}
 

@@ -25,7 +25,7 @@ export function MasterUtilityBar({
   engineLabel = 'ENGINE',
   engineId = 'CORE',
   version = 'V. 2.0.0',
-  hwAccelText = 'HW ACCEL: AUTO (VIDEOTOOLBOX)',
+  hwAccelText = 'PROCESSING CORE: ONLINE ●',
 }: {
   toolName?: string;
   engineLabel?: string;
@@ -96,7 +96,7 @@ export function MasterHeader({
   title = '',
   subtitle,
   version = 'V. 2.0.0',
-  hwAccelText = 'HW ACCEL: AUTO (VIDEOTOOLBOX)',
+  hwAccelText = 'PROCESSING CORE: ONLINE ●',
   rightAction,
   onlyUtilityBar = false,
   onlyToolHeader = false,
