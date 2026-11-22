@@ -9,7 +9,7 @@ const identity = getSiteIdentity();
 export const metadata: Metadata = {
   title: 'About Celestial Media Hub',
   description:
-    'Architecture, native FFmpeg and yt-dlp processing pipelines, cross-platform hardware acceleration, and security model behind Celestial Media Hub.',
+    'Architecture, native FFmpeg and yt-dlp processing pipelines, local GPU hardware acceleration, and security model behind Celestial Media Hub.',
   alternates: {
     canonical: '/about',
   },
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     url: '/about',
     title: 'About Celestial Media Hub — Local & Cloud FFmpeg Media Studio',
     description:
-      'Architecture, native FFmpeg and yt-dlp processing pipelines, cross-platform hardware acceleration, and security model behind Celestial Media Hub.',
+      'Architecture, native FFmpeg and yt-dlp processing pipelines, local GPU hardware acceleration, and security model behind Celestial Media Hub.',
     images: [{ url: '/og-image.png', width: 1200, height: 630, alt: identity.headline }],
   },
 };
@@ -40,7 +40,7 @@ export default function AboutPage() {
             onlyToolHeader
             targetId="TRUST // ABOUT"
             title={<>About Celestial<br />Media Hub.</>}
-            subtitle="Open-source Next.js 14 and FFmpeg media studio built for fast, lossless stream processing, hardware-accelerated compression, precision audio editing, and clean extraction."
+            subtitle="Open-source Next.js 14 and FFmpeg media studio built for fast, lossless stream processing, multi-codec batch compression, precision audio editing, and clean extraction — with GPU hardware acceleration unlocked when cloned and run locally."
           />
 
           <div style={{ padding: '0 24px 24px', display: 'grid', gap: '20px' }}>
@@ -61,10 +61,10 @@ export default function AboutPage() {
                 `yt-dlp`, and `cwebp` binaries through isolated Next.js API workers and Server-Sent Events progress telemetry.
               </p>
               <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7, fontSize: '14px' }}>
-                Every workflow runs cross-platform on macOS (Apple Silicon &amp; VideoToolbox), Windows (NVIDIA NVENC &amp;
-                Intel QSV), and Linux containers with automatic software encoding fallbacks when GPU hardware acceleration
-                is unavailable. You can use the hosted cloud web workbench or clone the repository locally to remove upload
-                latency altogether.
+                The hosted website runs CPU-based software encoders (`libx265`, `libx264`, `libaom-av1`, `libvpx-vp9`) inside
+                a cloud Linux container. Clone the repository and run it locally on your own device to unlock GPU hardware
+                acceleration (Apple VideoToolbox on macOS, NVIDIA NVENC and Intel QSV on Windows/Linux), native macOS PDF
+                rasterization, and zero upload latency.
               </p>
             </section>
 

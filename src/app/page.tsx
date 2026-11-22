@@ -46,7 +46,7 @@ export const metadata: Metadata = {
 export default function Dashboard() {
   const tools = [
     { num: '02', name: 'Video Muter', desc: 'Instantly strip audio tracks or replace with silent audio channels.', path: '/tools/muter' },
-    { num: '03', name: 'Universal Compressor', desc: 'Hardware-accelerated video, audio, and image batch compressor with smart CRF estimation.', path: '/tools/hevc' },
+    { num: '03', name: 'Universal Compressor', desc: 'Video, audio, and image batch compressor with smart CRF estimation (GPU acceleration available when cloned and run locally).', path: '/tools/hevc' },
     { num: '04', name: 'Universal Converter', desc: 'Universal video, audio, and photo converter with smart stream remuxing & A2V studio.', path: '/tools/converter' },
     { num: '05', name: 'YouTube Downloader', desc: 'High-speed YouTube & Instagram video/audio extractor supporting Reels, 1080p, 320kbps audio, and playlists.', path: '/tools/youtube' },
     { num: '06', name: 'Audio Trimmer', desc: 'Precision waveform audio trimmer with sub-second cue points and multi-track concatenation.', path: '/tools/trimmer' },
