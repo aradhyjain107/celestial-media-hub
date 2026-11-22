@@ -1027,18 +1027,40 @@ export default function UniversalCompressorPage() {
                 <div className="form-group">
                   <div className="form-header" style={{ marginBottom: '10px' }}>
                     <span className="tiny-label" style={{ fontSize: '0.625rem', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>AUDIO BITRATE</span>
-                    <span className="mono-data">{audioBitrate.toUpperCase()}</span>
+                    <span className="mono-data" data-testid="audio-bitrate-value">
+                      {audioFormat === 'flac' ? 'LOSSLESS' : audioBitrate.toUpperCase()}
+                    </span>
                   </div>
-                  <HevcOptionGrid
-                    items={(['64k', '128k', '192k', '320k'] as const).map(b => ({
-                      value: b,
-                      label: b.toUpperCase(),
-                      testId: `bitrate-${b}`,
-                    }))}
-                    selected={audioBitrate}
-                    onSelect={setAudioBitrate}
-                    reducedMotion={shouldReduceMotion}
-                  />
+                  {audioFormat === 'flac' ? (
+                    <p
+                      data-testid="flac-lossless-note"
+                      style={{
+                        margin: 0,
+                        padding: '10px 12px',
+                        borderRadius: '4px',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        background: 'rgba(15, 15, 18, 0.45)',
+                        fontSize: '0.625rem',
+                        fontFamily: 'var(--font-mono)',
+                        color: 'var(--text-muted)',
+                        lineHeight: 1.45,
+                        letterSpacing: '0.04em',
+                      }}
+                    >
+                      FLAC IS LOSSLESS — BITRATE ONLY APPLIES TO MP3, AAC, AND OGG.
+                    </p>
+                  ) : (
+                    <HevcOptionGrid
+                      items={(['64k', '128k', '192k', '320k'] as const).map(b => ({
+                        value: b,
+                        label: b.toUpperCase(),
+                        testId: `bitrate-${b}`,
+                      }))}
+                      selected={audioBitrate}
+                      onSelect={setAudioBitrate}
+                      reducedMotion={shouldReduceMotion}
+                    />
+                  )}
                 </div>
 
                 <div className="form-group">

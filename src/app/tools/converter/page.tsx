@@ -871,25 +871,27 @@ export default function UniversalConverter() {
                     data-testid="advanced-section"
                     style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingTop: '8px' }}
                   >
-                    {/* Speed */}
-                    <div>
-                      <span className="tiny-label" style={{ marginBottom: '8px', display: 'block' }}>SPEED</span>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: '4px 2px' }}>
-                        {SPEED_OPTIONS.map((s, idx) => (
-                          <ConverterOptionTile
-                            key={s}
-                            label={`${s}x`}
-                            isSelected={speed === s}
-                            onClick={() => handleCustomOverride(() => setSpeed(s))}
-                            testId={`speed-${s}`}
-                            ariaLabel={`Speed ${s}x`}
-                            reducedMotion={shouldReduceMotion}
-                            delay={idx * 0.02}
-                            style={{ padding: '6px 12px' }}
-                          />
-                        ))}
+                    {/* Speed — hidden for image formats */}
+                    {!isImageFormat && (
+                      <div>
+                        <span className="tiny-label" style={{ marginBottom: '8px', display: 'block' }}>SPEED</span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: '4px 2px' }}>
+                          {SPEED_OPTIONS.map((s, idx) => (
+                            <ConverterOptionTile
+                              key={s}
+                              label={`${s}x`}
+                              isSelected={speed === s}
+                              onClick={() => handleCustomOverride(() => setSpeed(s))}
+                              testId={`speed-${s}`}
+                              ariaLabel={`Speed ${s}x`}
+                              reducedMotion={shouldReduceMotion}
+                              delay={idx * 0.02}
+                              style={{ padding: '6px 12px' }}
+                            />
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Resolution — hidden for audio formats */}
                     {!isAudioFormat && (

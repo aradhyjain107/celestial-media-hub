@@ -124,7 +124,7 @@ export default function YouTubeDownloader() {
           : videoInfo?.title || (isInstagram ? 'Instagram Download' : 'YouTube Download'),
         format: format.toUpperCase(),
         date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        size: isAudioFormat ? `${quality} kbps` : quality,
+        size: format === 'wav' ? 'Lossless PCM' : (isAudioFormat ? `${quality} kbps` : quality),
         platform: isInstagram ? 'IG' : 'YT',
       });
     }
@@ -913,49 +913,71 @@ export default function YouTubeDownloader() {
             <div className="form-group">
               <div className="form-header" style={{ marginBottom: '8px' }}>
                 <span className="tiny-label">{isAudioFormat ? 'AUDIO BITRATE' : 'VIDEO RESOLUTION'}</span>
-                <span className="mono-data">{isAudioFormat ? `${quality} KBPS` : quality.toUpperCase()}</span>
+                <span className="mono-data">
+                  {format === 'wav' ? 'LOSSLESS PCM' : (isAudioFormat ? `${quality} KBPS` : quality.toUpperCase())}
+                </span>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', gap: '6px', padding: '4px 2px' }} data-testid="quality-grid">
-                {qualities.map(q => {
-                  const isSelected = quality === q;
-                  return (
-                    <motion.button
-                      key={q}
-                      type="button"
-                      whileHover={shouldReduceMotion ? undefined : { scale: 1.02 }}
-                      whileTap={shouldReduceMotion ? undefined : { scale: 0.98 }}
-                      transition={{ duration: 0.12, ease: [0.23, 1, 0.32, 1] }}
-                      onClick={() => setQuality(q)}
-                      data-testid={`quality-${q}`}
-                      aria-pressed={isSelected}
-                      style={{
-                        position: 'relative',
-                        minHeight: '36px',
-                        padding: '8px 4px',
-                        textAlign: 'center',
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: '0.6875rem',
-                        fontWeight: 700,
-                        letterSpacing: '0.04em',
-                        cursor: 'pointer',
-                        borderRadius: '4px',
-                        border: isSelected ? '1px solid var(--accent)' : '1px solid rgba(255, 255, 255, 0.08)',
-                        background: isSelected ? 'rgba(255, 90, 0, 0.18)' : 'rgba(15, 15, 18, 0.65)',
-                        color: isSelected ? 'var(--accent)' : 'var(--text-muted)',
-                        boxShadow: isSelected ? '0 0 14px rgba(255, 90, 0, 0.28)' : 'none',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        transition: 'border-color 0.15s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease'
-                      }}
-                    >
-                      {isAudioFormat ? `${q} KBPS` : q.toUpperCase()}
-                    </motion.button>
-                  );
-                })}
-              </div>
+              {format === 'wav' ? (
+                <p
+                  data-testid="wav-lossless-note"
+                  style={{
+                    margin: 0,
+                    padding: '10px 12px',
+                    borderRadius: '4px',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    background: 'rgba(15, 15, 18, 0.45)',
+                    fontSize: '0.625rem',
+                    fontFamily: 'var(--font-mono)',
+                    color: 'var(--text-muted)',
+                    lineHeight: 1.45,
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  WAV IS UNCOMPRESSED LOSSLESS PCM — BITRATE ONLY APPLIES TO MP3 AND M4A.
+                </p>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', gap: '6px', padding: '4px 2px' }} data-testid="quality-grid">
+                  {qualities.map(q => {
+                    const isSelected = quality === q;
+                    return (
+                      <motion.button
+                        key={q}
+                        type="button"
+                        whileHover={shouldReduceMotion ? undefined : { scale: 1.02 }}
+                        whileTap={shouldReduceMotion ? undefined : { scale: 0.98 }}
+                        transition={{ duration: 0.12, ease: [0.23, 1, 0.32, 1] }}
+                        onClick={() => setQuality(q)}
+                        data-testid={`quality-${q}`}
+                        aria-pressed={isSelected}
+                        style={{
+                          position: 'relative',
+                          minHeight: '36px',
+                          padding: '8px 4px',
+                          textAlign: 'center',
+                          fontFamily: 'var(--font-mono)',
+                          fontSize: '0.6875rem',
+                          fontWeight: 700,
+                          letterSpacing: '0.04em',
+                          cursor: 'pointer',
+                          borderRadius: '4px',
+                          border: isSelected ? '1px solid var(--accent)' : '1px solid rgba(255, 255, 255, 0.08)',
+                          background: isSelected ? 'rgba(255, 90, 0, 0.18)' : 'rgba(15, 15, 18, 0.65)',
+                          color: isSelected ? 'var(--accent)' : 'var(--text-muted)',
+                          boxShadow: isSelected ? '0 0 14px rgba(255, 90, 0, 0.28)' : 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          transition: 'border-color 0.15s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease'
+                        }}
+                      >
+                        {isAudioFormat ? `${q} KBPS` : q.toUpperCase()}
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
         </ResizableOptionsPanel>
       </div>
