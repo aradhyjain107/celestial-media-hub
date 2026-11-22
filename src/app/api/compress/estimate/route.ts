@@ -12,7 +12,7 @@ import fs from 'node:fs';
 
 export const dynamic = 'force-dynamic';
 
-const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.avif', '.gif', '.bmp', '.tiff']);
+const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.avif', '.gif', '.bmp', '.tiff', '.heic', '.heif']);
 const AUDIO_EXTS = new Set(['.mp3', '.wav', '.flac', '.m4a', '.aac', '.ogg', '.opus', '.wma', '.alac']);
 
 function getEstimateCacheDir(): string {
@@ -225,7 +225,10 @@ export async function POST(req: NextRequest) {
             imgArgs.push('-vf', `scale='if(gt(iw,ih),min(iw,${maxDim}),-2)':'if(gt(ih,iw),min(ih,${maxDim}),-2)'`);
           }
           if (imageFormat === 'webp') {
-            imgArgs.push('-c:v', 'libwebp');
+            imgArgs.push('-c:v', 'libwebp', '-quality', String(imageQuality));
+          } else if (imageFormat === 'avif') {
+            const avifCrf = Math.max(10, Math.min(63, Math.round(63 - (imageQuality / 100) * 53)));
+            imgArgs.push('-c:v', 'libaom-av1', '-still-picture', '1', '-crf', String(avifCrf));
           } else if (imageFormat === 'jpeg' || imageFormat === 'jpg') {
             const qscale = Math.max(1, Math.round((100 - imageQuality) / 3));
             imgArgs.push('-c:v', 'mjpeg', '-q:v', String(qscale));

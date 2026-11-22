@@ -501,32 +501,36 @@ export default function UniversalCompressorPage() {
           fileEst = Math.round(f.size * estRatio);
         }
       } else {
-        const q = imageQuality / 100;
-        let formatBaseRatio = 0.15;
-        if (imageFormat === 'webp') {
-          formatBaseRatio = 0.04 + q * 0.18;
-        } else if (imageFormat === 'avif') {
-          formatBaseRatio = 0.03 + q * 0.15;
-        } else if (imageFormat === 'jpeg') {
-          formatBaseRatio = 0.08 + q * 0.28;
-        } else if (imageFormat === 'png') {
-          formatBaseRatio = ext === 'png' ? 0.85 : 1.2;
-        }
+        const q = Math.max(0.1, Math.min(1, imageQuality / 100));
+        const isLosslessInput = ['png', 'bmp', 'tiff', 'tif'].includes(ext);
 
         let dimFactor = 1;
         if (meta && meta.width > 0 && meta.height > 0 && maxDimension !== 'original') {
           const maxDim = parseInt(maxDimension, 10);
           const currentMax = Math.max(meta.width, meta.height);
           if (currentMax > maxDim) {
-            dimFactor = Math.pow(maxDim / currentMax, 1.6);
+            dimFactor = Math.pow(maxDim / currentMax, 1.75);
           }
-        } else {
-          if (maxDimension === '1920') dimFactor = 0.75;
-          if (maxDimension === '1080') dimFactor = 0.5;
-          if (maxDimension === '800') dimFactor = 0.3;
+        } else if (maxDimension !== 'original') {
+          if (maxDimension === '3840') dimFactor = 0.9;
+          if (maxDimension === '1920') dimFactor = 0.65;
+          if (maxDimension === '1080') dimFactor = 0.42;
+          if (maxDimension === '800') dimFactor = 0.25;
         }
 
-        const estRatio = Math.max(0.02, Math.min(1.5, formatBaseRatio * dimFactor));
+        let formatBaseRatio = 0.5;
+        if (imageFormat === 'webp') {
+          formatBaseRatio = isLosslessInput ? 0.06 + q * 0.26 : 0.24 + q * 0.52;
+        } else if (imageFormat === 'avif') {
+          formatBaseRatio = isLosslessInput ? 0.04 + q * 0.2 : 0.18 + q * 0.4;
+        } else if (imageFormat === 'jpeg') {
+          formatBaseRatio = isLosslessInput ? 0.08 + q * 0.34 : 0.28 + q * 0.66;
+        } else if (imageFormat === 'png') {
+          // PNG is lossless: re-encoding PNG saves ~5-12%, whereas converting lossy JPEG/HEIC/WebP to lossless PNG expands size.
+          formatBaseRatio = isLosslessInput ? 0.9 : 2.1;
+        }
+
+        const estRatio = Math.max(0.02, Math.min(3.0, formatBaseRatio * dimFactor));
         fileEst = Math.round(f.size * estRatio);
       }
 
@@ -1066,11 +1070,28 @@ export default function UniversalCompressorPage() {
               >
                 <div className="form-group">
                   <div className="form-header" style={{ marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <label htmlFor={imageQualityId} className="tiny-label" style={{ fontSize: '0.625rem', letterSpacing: '0.08em', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                    <label
+                      htmlFor={imageQualityId}
+                      className="tiny-label"
+                      style={{
+                        fontSize: '0.625rem',
+                        letterSpacing: '0.08em',
+                        color: 'var(--text-muted)',
+                        cursor: imageFormat === 'png' ? 'not-allowed' : 'pointer',
+                      }}
+                    >
                       IMAGE QUALITY (%)
                     </label>
-                    <span className="mono-data" data-testid="image-quality-value" style={{ color: 'var(--accent)', fontWeight: 800, fontSize: '0.8125rem' }}>
-                      {imageQuality}%
+                    <span
+                      className="mono-data"
+                      data-testid="image-quality-value"
+                      style={{
+                        color: imageFormat === 'png' ? 'var(--text-muted)' : 'var(--accent)',
+                        fontWeight: 800,
+                        fontSize: '0.8125rem',
+                      }}
+                    >
+                      {imageFormat === 'png' ? 'LOSSLESS' : `${imageQuality}%`}
                     </span>
                   </div>
                   <input
@@ -1080,10 +1101,31 @@ export default function UniversalCompressorPage() {
                     max={100}
                     step={5}
                     value={imageQuality}
+                    disabled={imageFormat === 'png'}
                     onChange={e => setImageQuality(parseInt(e.target.value, 10))}
                     data-testid="image-quality-slider"
-                    style={{ width: '100%', accentColor: 'var(--accent)', cursor: 'pointer' }}
+                    style={{
+                      width: '100%',
+                      accentColor: 'var(--accent)',
+                      cursor: imageFormat === 'png' ? 'not-allowed' : 'pointer',
+                      opacity: imageFormat === 'png' ? 0.35 : 1,
+                    }}
                   />
+                  {imageFormat === 'png' && (
+                    <p
+                      data-testid="png-lossless-note"
+                      style={{
+                        margin: '6px 0 0',
+                        fontSize: '0.625rem',
+                        fontFamily: 'var(--font-mono)',
+                        color: 'var(--text-muted)',
+                        lineHeight: 1.45,
+                        letterSpacing: '0.04em',
+                      }}
+                    >
+                      PNG IS LOSSLESS — QUALITY % ONLY APPLIES TO WEBP, JPEG, AND AVIF. USE MAX DIMENSION OR SWITCH FORMAT TO SHRINK SIZE.
+                    </p>
+                  )}
                 </div>
 
                 <div className="form-group">
@@ -1156,6 +1198,25 @@ export default function UniversalCompressorPage() {
                       {estimatedStats.percentReduction < 0 ? `+${Math.abs(estimatedStats.percentReduction)}%` : `${estimatedStats.isExactActual ? '' : '~'}${estimatedStats.percentReduction}%`}
                     </span>
                   </div>
+                  {estimatedStats.percentReduction < 0 && (
+                    <p
+                      data-testid="expansion-explanation"
+                      style={{
+                        margin: 0,
+                        fontSize: '0.625rem',
+                        fontFamily: 'var(--font-mono)',
+                        color: 'var(--text-muted)',
+                        lineHeight: 1.45,
+                        letterSpacing: '0.03em',
+                      }}
+                    >
+                      {activeTab === 'PHOTO' && imageFormat === 'png'
+                        ? 'Converting lossy photos (JPEG/HEIC/WebP) to lossless PNG increases file size. Switch to WebP, JPEG, or AVIF to compress.'
+                        : activeTab === 'AUDIO' && audioFormat === 'flac'
+                        ? 'Converting lossy audio to lossless FLAC increases file size. Switch to MP3, AAC, or OGG to compress.'
+                        : 'Target settings produce a higher bitrate than the source file. Lower quality/bitrate or resolution to shrink size.'}
+                    </p>
+                  )}
                 </div>
               </motion.div>
             )}

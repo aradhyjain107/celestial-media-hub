@@ -118,4 +118,31 @@ describe('Universal Compressor', () => {
       );
     });
   });
+
+  test('disables image quality slider for lossless PNG and updates estimate dynamically for lossy photo formats', async () => {
+    render(<GlobalJobProvider><UniversalCompressor /></GlobalJobProvider>);
+    const input = screen.getByTestId('file-input');
+    const jpgFile = new File(['x'.repeat(4 * 1024 * 1024)], 'photo.jpg', { type: 'image/jpeg' });
+    Object.defineProperty(input, 'files', { value: [jpgFile], configurable: true });
+    fireEvent.change(input);
+
+    // Default photo format is WEBP: quality slider is enabled and changes estimated size
+    await waitFor(() => {
+      expect(screen.getByTestId('image-quality-slider')).not.toBeDisabled();
+    });
+    const webpEstAt80 = screen.getByTestId('estimated-output-size').textContent;
+    fireEvent.change(screen.getByTestId('image-quality-slider'), { target: { value: '30' } });
+    await waitFor(() => {
+      expect(screen.getByTestId('estimated-output-size').textContent).not.toBe(webpEstAt80);
+    });
+
+    // Switch to PNG (lossless): quality slider becomes disabled, shows LOSSLESS + expansion explanation
+    fireEvent.click(screen.getByTestId('image-format-png'));
+    await waitFor(() => {
+      expect(screen.getByTestId('image-quality-slider')).toBeDisabled();
+      expect(screen.getByTestId('image-quality-value')).toHaveTextContent('LOSSLESS');
+      expect(screen.getByTestId('png-lossless-note')).toBeInTheDocument();
+      expect(screen.getByTestId('expansion-explanation')).toBeInTheDocument();
+    });
+  });
 });
