@@ -302,5 +302,24 @@ describe('Dashboard & System UI Suite — Deep Test Matrix', () => {
       });
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     });
+
+    test('times out hanging health requests cleanly without AbortError', async () => {
+      // Simulate a hanging /api/health request (e.g. cold dev compilation)
+      global.fetch = vi.fn().mockImplementation(() => new Promise(() => {}));
+
+      render(<ServerGuard />);
+
+      // Advance past the 8s per-request timeout without crashing
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(9000);
+      });
+
+      // Only 1 failure so far (< threshold of 5), modal stays hidden and no AbortError thrown
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/health',
+        expect.not.objectContaining({ signal: expect.anything() })
+      );
+    });
   });
 });

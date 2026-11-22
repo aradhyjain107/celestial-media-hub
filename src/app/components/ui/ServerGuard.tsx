@@ -18,23 +18,17 @@ interface HealthState {
 }
 
 const safeFetchHealth = async (url: string, timeoutMs = 8000): Promise<Response | null> => {
-  const controller = new AbortController();
-  const timer = setTimeout(() => {
-    try {
-      controller.abort();
-    } catch {}
-  }, timeoutMs);
-
+  let timer: ReturnType<typeof setTimeout> | null = null;
   try {
-    const res = await safeFetch(url, {
-      cache: 'no-store',
-      signal: controller.signal,
+    const fetchPromise = safeFetch(url, { cache: 'no-store' }).catch(() => null);
+    const timeoutPromise = new Promise<null>((resolve) => {
+      timer = setTimeout(() => resolve(null), timeoutMs);
     });
-    clearTimeout(timer);
-    return res;
+    return await Promise.race([fetchPromise, timeoutPromise]);
   } catch {
-    clearTimeout(timer);
     return null;
+  } finally {
+    if (timer !== null) clearTimeout(timer);
   }
 };
 
