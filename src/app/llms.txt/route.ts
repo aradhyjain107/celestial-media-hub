@@ -4,7 +4,10 @@ import { getSiteUrl, prefersMarkdown, renderLlmsTxt } from '@/lib/agent/siteCont
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
-  const siteUrl = getSiteUrl(req.nextUrl.origin);
+  const forwardedHost = req.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
+  const forwardedProto = req.headers.get('x-forwarded-proto')?.split(',')[0]?.trim() || 'https';
+  const requestOrigin = forwardedHost ? `${forwardedProto}://${forwardedHost}` : req.nextUrl.origin;
+  const siteUrl = getSiteUrl(requestOrigin);
   const body = renderLlmsTxt(siteUrl);
   const contentType = prefersMarkdown(req.headers.get('accept'))
     ? 'text/markdown; charset=utf-8'

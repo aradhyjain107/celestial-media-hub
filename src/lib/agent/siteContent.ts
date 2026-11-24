@@ -132,10 +132,24 @@ export const STATIC_OR_MACHINE_PATHS = new Set<string>([
   '/hardware-probe-worker.js',
 ]);
 
+function isInternalBindOrigin(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname === '0.0.0.0' || parsed.hostname === '::' || parsed.hostname === '[::]';
+  } catch {
+    return true;
+  }
+}
+
 export function getSiteUrl(originOverride?: string): string {
+  const safeOverride =
+    originOverride?.trim() && !isInternalBindOrigin(originOverride.trim())
+      ? originOverride.trim()
+      : '';
   const raw =
     process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
-    originOverride?.trim() ||
+    process.env.RENDER_EXTERNAL_URL?.trim() ||
+    safeOverride ||
     DEFAULT_SITE_URL;
   return raw.replace(/\/+$/, '');
 }
