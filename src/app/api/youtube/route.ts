@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { YoutubeInputSchema, isValidMediaUrl, detectMediaPlatform } from '../../../schemas/youtube';
 import { executeYtdlp, getVideoInfo, getPlaylistInfo } from '../../../lib/media/ytdlp';
-import { createJobDir, cleanupJobDir } from '../../../lib/system/temp';
+import * as tempManager from '../../../lib/system/temp';
+const { createJobDir, cleanupJobDir } = tempManager;
 import { randomUUID } from 'crypto';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -85,6 +86,9 @@ export async function POST(req: NextRequest) {
     const isMultiUrlBatch = batchList.length > 1;
     
     const masterDir = createJobDir(masterJobId);
+    try {
+      tempManager.markJobActive?.(masterJobId);
+    } catch {}
     
     const outputTemplate = isMultiUrlBatch ? '%(title).120s [%(id)s].%(ext)s' : '%(title)s.%(ext)s';
     const args = ['-P', masterDir, '-o', outputTemplate];
@@ -241,17 +245,28 @@ export async function POST(req: NextRequest) {
             throw new Error('No files were downloaded');
           }
 
-          try {
-            createZipArchive(masterDir, files, 'output.zip');
-          } catch (zipErr) {
-            console.warn('zip archive creation failed:', zipErr);
+          let useZip = false;
+          if (files.length > 1) {
+            try {
+              createZipArchive(masterDir, files, 'output.zip');
+              // eslint-disable-next-line security/detect-non-literal-fs-filename
+              useZip = fs.existsSync(path.join(masterDir, 'output.zip'));
+            } catch (zipErr) {
+              console.warn('zip archive creation failed:', zipErr);
+            }
           }
-          // eslint-disable-next-line security/detect-non-literal-fs-filename
-          const zipCreated = fs.existsSync(path.join(masterDir, 'output.zip'));
-          const finalDownloadUrl = zipCreated
+          const finalDownloadUrl = useZip
             ? `/api/download?jobId=${masterJobId}&file=output.zip`
             : `/api/download?jobId=${masterJobId}&file=${encodeURIComponent(files[0])}`;
-          const finalFilename = zipCreated ? 'youtube_downloads.zip' : files[0];
+          const finalFilename = useZip ? 'youtube_downloads.zip' : files[0];
+
+          // Refresh ownership & directory mtime after long downloads so /api/download remains valid
+          registerJobOwner(masterJobId, session.userId);
+          try {
+            const now = new Date();
+            // eslint-disable-next-line security/detect-non-literal-fs-filename
+            fs.utimesSync(masterDir, now, now);
+          } catch {}
 
           if (!req.signal?.aborted) {
             controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({
@@ -275,6 +290,9 @@ export async function POST(req: NextRequest) {
             cleanedUp = true;
           }
         } finally {
+          try {
+            tempManager.markJobInactive?.(masterJobId);
+          } catch {}
           stopHeartbeat();
           if (req.signal) {
             req.signal.removeEventListener('abort', onAbort);

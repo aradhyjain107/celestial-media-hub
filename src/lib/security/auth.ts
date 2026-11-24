@@ -65,7 +65,7 @@ export function verifyJobOwnership(jobId: string, userOrSession: AuthSession | s
 /**
  * Clean up old job ownership entries (prevents memory leak).
  */
-export function cleanExpiredJobOwners(maxAgeMs: number = 3600000): void {
+export function cleanExpiredJobOwners(maxAgeMs: number = 24 * 60 * 60 * 1000): void {
   const now = Date.now();
   jobOwnerMap.forEach((record, jobId) => {
     if (now - record.createdAt > maxAgeMs) {

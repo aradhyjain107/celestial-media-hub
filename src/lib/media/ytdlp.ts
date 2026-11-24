@@ -206,6 +206,14 @@ function ensurePlayableMp4Files(dir: string): void {
 
   for (const file of files) {
     const fullPath = path.join(dir, file);
+    try {
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
+      const fileSize = fs.statSync(fullPath).size;
+      // Never attempt synchronous CPU libx264 re-encoding on large (> 150 MB) videos (e.g. multi-hour streams)
+      if (fileSize > 150 * 1024 * 1024) continue;
+    } catch {
+      continue;
+    }
     let videoCodec = '';
     let pixFmt = '';
     try {
@@ -246,7 +254,7 @@ function ensurePlayableMp4Files(dir: string): void {
             '-movflags', '+faststart',
             tempOut,
           ],
-          { timeout: 60000, stdio: 'ignore' }
+          { timeout: 300000, stdio: 'ignore' }
         );
         // eslint-disable-next-line security/detect-non-literal-fs-filename
         if (fs.existsSync(tempOut) && fs.statSync(tempOut).size > 0) {
@@ -460,16 +468,40 @@ export function executeYtdlp(jobDir: string, url: string, args: string[]): Reada
 
         appendOptionalRuntimeArgs(baseArgs);
         appendFfmpegLocationIfExplicit(baseArgs);
+        // On local/high-spec hosts, download HLS/DASH fragments across 8 concurrent connections for 4x–8x faster throughput.
+        if (
+          !isLowMemoryContainer() &&
+          !baseArgs.includes('-N') &&
+          !baseArgs.includes('--concurrent-fragments')
+        ) {
+          baseArgs.push('--concurrent-fragments', '8');
+        }
+        // Prefer native H.264 + M4A when merging to MP4 so FFmpeg remuxes losslessly in seconds without re-encoding VP9/Opus.
+        const mergeIdx = baseArgs.indexOf('--merge-output-format');
+        if (
+          mergeIdx !== -1 &&
+          baseArgs[mergeIdx + 1] === 'mp4' &&
+          !baseArgs.includes('-S') &&
+          !baseArgs.includes('--format-sort')
+        ) {
+          baseArgs.push('-S', 'vcodec:h264,res,acodec:m4a');
+        }
         if (!baseArgs.includes('--socket-timeout')) {
-          baseArgs.push('--socket-timeout', '15');
+          baseArgs.push('--socket-timeout', '30');
         }
         if (!baseArgs.includes('--retries')) {
-          baseArgs.push('--retries', '3');
+          baseArgs.push('--retries', '10');
+        }
+        if (!baseArgs.includes('--fragment-retries')) {
+          baseArgs.push('--fragment-retries', '10');
         }
         if (!baseArgs.includes('--extractor-retries')) {
           baseArgs.push('--extractor-retries', '3');
         }
         baseArgs.push('--no-warnings', '--newline', '--progress');
+
+        const DOWNLOAD_STALL_TIMEOUT_MS = 5 * 60 * 1000; // 5 min network stall guard
+        const POSTPROCESS_TIMEOUT_MS = 60 * 60 * 1000;   // 60 min for FFmpeg mux/audio extraction on multi-hour files
 
         const runAttempt = async (extraArgs: string[]): Promise<{ stderrLog: string; timedOut: boolean }> => {
           if (isCancelled) {
@@ -483,8 +515,9 @@ export function executeYtdlp(jobDir: string, url: string, args: string[]): Reada
           ytdlpProc = ytdlp;
 
           let timedOut = false;
+          let inPostProcess = false;
           let activityTimer: NodeJS.Timeout | null = null;
-          const resetActivityTimer = (ms = 90000) => {
+          const resetActivityTimer = (ms = inPostProcess ? POSTPROCESS_TIMEOUT_MS : DOWNLOAD_STALL_TIMEOUT_MS) => {
             if (activityTimer) clearTimeout(activityTimer);
             activityTimer = setTimeout(() => {
               if (!hasExited && ytdlp) {
@@ -495,27 +528,43 @@ export function executeYtdlp(jobDir: string, url: string, args: string[]): Reada
               }
             }, ms);
           };
-          resetActivityTimer(90000);
+          resetActivityTimer(DOWNLOAD_STALL_TIMEOUT_MS);
 
           let stderrLog = '';
 
           ytdlp.stdin?.on('error', () => {});
           ytdlp.stdout?.on('data', (chunk) => {
-            resetActivityTimer(90000);
-            if (isCancelled) return;
-            const lines = chunk.toString().split(/[\r\n]+/);
+            const textChunk = chunk.toString();
+            if (
+              /\[(Merger|ExtractAudio|VideoRemuxer|VideoConvertor|Fixup|Metadata)/i.test(textChunk) ||
+              textChunk.includes('Deleting original file')
+            ) {
+              inPostProcess = true;
+            }
+            const lines = textChunk.split(/[\r\n]+/);
             for (const line of lines) {
-              const match = line.match(/\[download\]\s+(\d+\.\d+)%/);
+              const match = line.match(/\[download\]\s+(\d+(?:\.\d+)?)%/);
               if (match) {
-                try {
-                  controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ progress: parseFloat(match[1]) })}\n\n`));
-                } catch {}
+                const pct = parseFloat(match[1]);
+                if (pct >= 99.5) {
+                  inPostProcess = true;
+                }
+                if (!isCancelled) {
+                  try {
+                    controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ progress: pct })}\n\n`));
+                  } catch {}
+                }
               }
             }
+            resetActivityTimer(inPostProcess ? POSTPROCESS_TIMEOUT_MS : DOWNLOAD_STALL_TIMEOUT_MS);
           });
           ytdlp.stderr?.on('data', (chunk) => {
-            resetActivityTimer(90000);
-            stderrLog += chunk.toString();
+            const errChunk = chunk.toString();
+            stderrLog += errChunk;
+            if (/\[(Merger|ExtractAudio|VideoRemuxer|VideoConvertor|Fixup)/i.test(errChunk)) {
+              inPostProcess = true;
+            }
+            resetActivityTimer(inPostProcess ? POSTPROCESS_TIMEOUT_MS : DOWNLOAD_STALL_TIMEOUT_MS);
           });
           ytdlp.stdout?.on('error', () => {});
           ytdlp.stderr?.on('error', () => {});

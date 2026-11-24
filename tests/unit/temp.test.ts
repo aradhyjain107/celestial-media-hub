@@ -104,4 +104,30 @@ describe('lib/temp.ts', () => {
     clearInterval(timer);
     vi.useRealTimers();
   });
+
+  test('startTempDirSweeper preserves active multi-hour download directories until marked inactive', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+    vi.spyOn(fs.promises, 'readdir').mockResolvedValue([
+      { name: 'six_hour_download', isDirectory: () => true } as any,
+    ]);
+    const rmSpy = vi.spyOn(fs.promises, 'rm').mockResolvedValue(undefined as any);
+    vi.spyOn(fs.promises, 'stat').mockResolvedValue({
+      mtimeMs: Date.now() - (2 * 60 * 60 * 1000), // 2 hours old directory mtime
+    } as any);
+
+    const { startTempDirSweeper, markJobActive, markJobInactive } = await import('../../src/lib/system/temp');
+    markJobActive('six_hour_download');
+    const timer = startTempDirSweeper(30 * 60 * 1000, 5 * 60 * 1000);
+
+    await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
+    expect(rmSpy).not.toHaveBeenCalled();
+
+    markJobInactive('six_hour_download');
+    await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
+    expect(rmSpy).toHaveBeenCalledWith('/mock/temp/six_hour_download', { recursive: true, force: true });
+
+    clearInterval(timer);
+    vi.useRealTimers();
+  });
 });

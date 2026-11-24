@@ -67,11 +67,12 @@ describe('/api/youtube POST', () => {
         ['-P', '/mock/yt', '-o', '%(title)s.%(ext)s', '-x', '--audio-format', 'mp3', '--audio-quality', '320K', '--no-playlist']
     );
     expect(text).toContain('"progress":56');
-    expect(text).toMatch(/"downloadUrl":"\/api\/download\?jobId=[a-zA-Z0-9\-]+&file=output\.zip"/);
-    expect(mockExecFileSync).toHaveBeenCalledWith('zip', ['-j', 'output.zip', '--', 'video.mp3'], { cwd: '/mock/yt' });
+    expect(text).toMatch(/"downloadUrl":"\/api\/download\?jobId=[a-zA-Z0-9\-]+&file=video\.mp3"/);
+    expect(mockExecFileSync).not.toHaveBeenCalled();
   });
 
   test('accepts Instagram batch URLs (urls array) and carousel playlist mode', async () => {
+    vi.spyOn(fs, 'readdirSync').mockReturnValue(['reel1.mp4', 'reel2.mp4'] as any);
     const req = {
       json: async () => ({
         url: 'https://www.instagram.com/reel/C8reel123/',
@@ -114,6 +115,7 @@ describe('/api/youtube POST', () => {
       'https://www.instagram.com/p/C9carousel456/',
       ['-P', '/mock/yt', '-o', '%(title).120s [%(id)s].%(ext)s', '-f', 'bestvideo[height<=1080]+bestaudio/best', '--merge-output-format', 'mp4', '--yes-playlist', '-i']
     );
+    expect(mockExecFileSync).toHaveBeenCalledWith('zip', ['-j', 'output.zip', '--', 'reel1.mp4', 'reel2.mp4'], { cwd: '/mock/yt' });
   });
 });
 

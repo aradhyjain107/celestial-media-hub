@@ -62,6 +62,7 @@ export function createJobDir(jobId: string): string {
 
 export function cleanupJobDir(jobId: string): void {
   const cleanJobId = sanitizeJobId(jobId);
+  getActiveJobSet().delete(cleanJobId);
   const baseDir = path.resolve(env.TEMP_DIR);
   const dir = path.resolve(baseDir, cleanJobId);
 
@@ -76,6 +77,34 @@ export function cleanupJobDir(jobId: string): void {
 }
 
 const GLOBAL_SWEEPER_KEY = Symbol.for('celestial.tempDirSweeperStarted');
+const GLOBAL_ACTIVE_JOBS_KEY = Symbol.for('celestial.activeJobDirs');
+
+function getActiveJobSet(): Set<string> {
+  const g = globalThis as any;
+  // eslint-disable-next-line security/detect-object-injection
+  if (!g[GLOBAL_ACTIVE_JOBS_KEY]) {
+    // eslint-disable-next-line security/detect-object-injection
+    g[GLOBAL_ACTIVE_JOBS_KEY] = new Set<string>();
+  }
+  // eslint-disable-next-line security/detect-object-injection
+  return g[GLOBAL_ACTIVE_JOBS_KEY] as Set<string>;
+}
+
+export function markJobActive(jobId: string): void {
+  try {
+    getActiveJobSet().add(sanitizeJobId(jobId));
+  } catch {
+    // Ignore invalid jobId
+  }
+}
+
+export function markJobInactive(jobId: string): void {
+  try {
+    getActiveJobSet().delete(sanitizeJobId(jobId));
+  } catch {
+    // Ignore invalid jobId
+  }
+}
 
 export function ensureTempDirSweeperStarted(
   ttlMs: number = 30 * 60 * 1000,
@@ -118,8 +147,10 @@ export function startTempDirSweeper(
       }
       const now = Date.now();
 
+      const activeJobs = getActiveJobSet();
       for (const entry of entries) {
         if (entry.isDirectory()) {
+          if (activeJobs.has(entry.name)) continue;
           const dirPath = path.resolve(baseDir, entry.name);
           if (!dirPath.startsWith(baseDir + path.sep)) continue;
 

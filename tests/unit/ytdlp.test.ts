@@ -94,4 +94,30 @@ describe('executeYtdlp and getPlaylistInfo', () => {
     expect(info[0].title).toBe('Song 1');
     expect(info[1].id).toBe('456');
   });
+
+  test('passes --concurrent-fragments 8 and native H.264/M4A sort when merging to mp4 on local hosts', async () => {
+    vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+    vi.spyOn(fs, 'readdirSync').mockReturnValue([] as any);
+
+    let capturedArgs: string[] = [];
+    mockSpawn.mockImplementation((_cmd: any, args: string[]) => {
+      capturedArgs = args;
+      const proc: any = new EventEmitter();
+      proc.stdout = new EventEmitter();
+      proc.stderr = new EventEmitter();
+      setTimeout(() => proc.emit('close', 0), 5);
+      return proc;
+    });
+
+    const stream = executeYtdlp('/tmp/yt', 'https://www.youtube.com/watch?v=test', [
+      '--merge-output-format',
+      'mp4',
+    ]);
+    await readStream(stream);
+
+    expect(capturedArgs).toContain('--concurrent-fragments');
+    expect(capturedArgs).toContain('8');
+    expect(capturedArgs).toContain('-S');
+    expect(capturedArgs).toContain('vcodec:h264,res,acodec:m4a');
+  });
 });
