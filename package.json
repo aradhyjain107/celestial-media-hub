@@ -1,6 +1,6 @@
 {
   "name": "celestial-media-hub",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "license": "MIT",
   "description": "Open-source full-stack media processing studio powered by Next.js, FFmpeg, and yt-dlp.",
   "homepage": "https://github.com/aradhyjain107/celestial-media-hub",

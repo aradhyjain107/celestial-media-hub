@@ -67,9 +67,19 @@ export async function POST(req: NextRequest) {
     }
 
     const masterDir = createJobDir(masterJobId);
+    ((globalThis as any)[Symbol.for('celestial.activeJobDirs')] ??= new Set<string>()).add(masterJobId);
     const inputPaths: string[] = [];
-    for (const f of rawFiles) {
-      inputPaths.push(await writeInputFile(masterJobId, f.name, f));
+    const seenInputNames = new Set<string>();
+    for (let idx = 0; idx < rawFiles.length; idx++) {
+      // eslint-disable-next-line security/detect-object-injection
+      const f = rawFiles[idx];
+      let safeName = f.name;
+      if (seenInputNames.has(safeName)) {
+        const parsedName = path.parse(safeName);
+        safeName = `${parsedName.name}_${idx + 1}${parsedName.ext}`;
+      }
+      seenInputNames.add(safeName);
+      inputPaths.push(await writeInputFile(masterJobId, safeName, f));
     }
 
     let hwEncoder: string | null = null;
@@ -417,6 +427,14 @@ export async function POST(req: NextRequest) {
             cleanedUp = true;
           }
         } finally {
+          (globalThis as any)[Symbol.for('celestial.activeJobDirs')]?.delete?.(masterJobId);
+          if (!cleanedUp) {
+            try {
+              const now = new Date();
+              // eslint-disable-next-line security/detect-non-literal-fs-filename
+              fs.utimesSync(masterDir, now, now);
+            } catch {}
+          }
           if (req.signal) {
             req.signal.removeEventListener('abort', onAbort);
           }

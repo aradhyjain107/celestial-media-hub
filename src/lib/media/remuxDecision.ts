@@ -30,6 +30,8 @@ export interface ConversionOptions {
   outputFormat: string;
   isGif: boolean;
   isImage?: boolean;
+  gifFps?: number;
+  gifPalette?: boolean;
 }
 
 // ── Compatibility tables ──────────────────────────────────────────────────────
@@ -290,7 +292,13 @@ export function buildStrategyArgs(
     const gifWidthMap: Record<string, string> = { '1080p': '1080', '720p': '720', '480p': '480', '360p': '360' };
     // eslint-disable-next-line security/detect-object-injection
     const gifWidth = gifWidthMap[resolution] || '720';
-    gifFilters.push(`fps=15,scale=${gifWidth}:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse`);
+    const fpsVal = opts.gifFps && opts.gifFps >= 5 && opts.gifFps <= 60 ? opts.gifFps : 15;
+    const usePalette = opts.gifPalette !== false;
+    if (usePalette) {
+      gifFilters.push(`fps=${fpsVal},scale=${gifWidth}:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse`);
+    } else {
+      gifFilters.push(`fps=${fpsVal},scale=${gifWidth}:-1:flags=lanczos`);
+    }
     args.push('-vf', gifFilters.join(','), '-loop', '0');
   }
 

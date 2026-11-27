@@ -52,6 +52,11 @@ describe('Rate Limiting Suite', () => {
       expect(classifyRouteGroup('/api/hevc')).toBe('heavy');
     });
 
+    test('classifies compress and compress/estimate as heavy', () => {
+      expect(classifyRouteGroup('/api/compress')).toBe('heavy');
+      expect(classifyRouteGroup('/api/compress/estimate')).toBe('heavy');
+    });
+
     test('classifies spotify-convert as heavy', () => {
       expect(classifyRouteGroup('/api/spotify-convert')).toBe('heavy');
     });
@@ -297,6 +302,28 @@ describe('Rate Limiting Suite', () => {
         headers: { 'x-real-ip': '5.6.7.8', authorization: 'Bearer user_alice' },
       }));
       expect(allowed.status).not.toBe(429);
+    });
+
+    test('spoofing leftmost X-Forwarded-For cannot bypass rate limiting when rightmost proxy hop is constant', () => {
+      const limit = RATE_LIMIT_GROUPS.heavy.limit;
+      for (let i = 0; i < limit; i++) {
+        middleware(new NextRequest('http://localhost/api/compress', {
+          method: 'POST',
+          headers: {
+            'x-forwarded-for': `10.0.0.${i + 1}, 203.0.113.55`,
+            authorization: 'Bearer user_alice',
+          },
+        }));
+      }
+
+      const spoofAttempt = middleware(new NextRequest('http://localhost/api/compress', {
+        method: 'POST',
+        headers: {
+          'x-forwarded-for': '198.51.100.99, 203.0.113.55',
+          authorization: 'Bearer user_alice',
+        },
+      }));
+      expect(spoofAttempt.status).toBe(429);
     });
   });
 });

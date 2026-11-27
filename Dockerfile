@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     ca-certificates \
     curl \
+    zip \
     unzip \
   && ARCH="$(dpkg --print-architecture)" \
   && if [ "$ARCH" = "arm64" ]; then DENO_TARGET="aarch64-unknown-linux-gnu"; QJS_TARGET="qjs-linux-aarch64"; else DENO_TARGET="x86_64-unknown-linux-gnu"; QJS_TARGET="qjs-linux-x86_64"; fi \

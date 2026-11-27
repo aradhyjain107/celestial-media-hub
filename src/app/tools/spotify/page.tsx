@@ -157,15 +157,40 @@ export default function SpotifyConverter() {
   };
 
   const handleRetry = async (trackId: string) => {
+    const targetTrack = tracks.find(t => t.id === trackId);
+    setTracks(prev => prev.map(t => (t.id === trackId ? { ...t, status: 'processing' } : t)));
     try {
-      await authenticatedFetch(`${process.env.NEXT_PUBLIC_API_BASE_URL ?? ''}/api/spotify-convert/retry`, {
+      const res = await authenticatedFetch(`${process.env.NEXT_PUBLIC_API_BASE_URL ?? ''}/api/spotify-convert/retry`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ trackId }),
+        body: JSON.stringify({
+          trackId,
+          trackName: targetTrack?.name,
+          format,
+          quality,
+        }),
       });
-    } catch {}
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setTracks(prev => prev.map(t => (t.id === trackId ? { ...t, status: 'done' } : t)));
+        if (data?.downloadUrl && typeof document !== 'undefined') {
+          const dlUrl = appendAuthToken(data.downloadUrl, getAuthTokenSync());
+          const a = document.createElement('a');
+          a.href = dlUrl;
+          a.download = data.filename || `${targetTrack?.name || 'track'}.${format}`;
+          a.style.display = 'none';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        }
+      } else {
+        setTracks(prev => prev.map(t => (t.id === trackId ? { ...t, status: 'error' } : t)));
+      }
+    } catch {
+      setTracks(prev => prev.map(t => (t.id === trackId ? { ...t, status: 'error' } : t)));
+    }
   };
 
 

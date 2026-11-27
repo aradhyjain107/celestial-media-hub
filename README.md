@@ -10,8 +10,8 @@ pinned: false
 
 # Celestial Media Hub
 
-> **Obsidian Cyber-Noir Studio-Grade Local Media Processing Platform**  
-> High-performance transcoding, smart lossless remuxing, procedural audio-to-video kinetic synthesis, interactive dual-track waveform editing, and hardware-calibrated batch compression—running 100% locally on your machine with zero cloud telemetry.
+> **Obsidian Cyber-Noir Studio-Grade Local & Cloud Media Processing Platform**  
+> High-performance transcoding, smart lossless remuxing, procedural audio-to-video kinetic synthesis, interactive dual-track waveform editing, and multi-codec batch compression—use the hosted web studio at [celestial-media-hub.onrender.com](https://celestial-media-hub.onrender.com) or clone locally to unlock GPU hardware acceleration and zero upload latency.
 
 ---
 

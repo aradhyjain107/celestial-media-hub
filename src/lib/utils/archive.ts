@@ -45,6 +45,12 @@ export interface ZipEntryInput {
   mtime?: Date;
 }
 
+const PRECOMPRESSED_MEDIA_EXTS = new Set([
+  '.mp4', '.mkv', '.mov', '.webm', '.avi', '.m4v',
+  '.mp3', '.m4a', '.aac', '.ogg', '.opus', '.flac',
+  '.jpg', '.jpeg', '.png', '.webp', '.avif', '.gif', '.zip',
+]);
+
 /**
  * Pure-Node PKZIP 2.0 archive serializer (STORE / DEFLATE) requiring no external `zip` binary.
  */
@@ -55,15 +61,21 @@ export function buildZipBuffer(entries: ZipEntryInput[]): Buffer {
 
   for (const entry of entries) {
     const cleanName = path.basename(entry.name);
+    const ext = path.extname(cleanName).toLowerCase();
     const nameBuf = Buffer.from(cleanName, 'utf8');
     const raw = entry.data;
     const checksum = crc32(raw);
 
-    // Use deflate when smaller; keep STORE (0) for already-compressed media streams
-    const deflated = zlib.deflateRawSync(raw);
-    const useDeflate = deflated.length < raw.length;
-    const method = useDeflate ? 8 : 0;
-    const payload = useDeflate ? deflated : raw;
+    // Skip expensive, memory-doubling deflate pass on already-compressed media streams
+    let method = 0;
+    let payload = raw;
+    if (!PRECOMPRESSED_MEDIA_EXTS.has(ext)) {
+      const deflated = zlib.deflateRawSync(raw);
+      if (deflated.length < raw.length) {
+        method = 8;
+        payload = deflated;
+      }
+    }
     const { dosTime, dosDate } = toDosTimeDate(entry.mtime ?? new Date());
 
     // Local File Header (30 bytes + filename)

@@ -19,16 +19,17 @@ function getEstimateCacheDir(): string {
   return createJobDir('estimate-cache');
 }
 
-function getCacheFilePath(fileKey: string, originalName: string, size?: number): string {
+function getCacheFilePath(userId: string, fileKey: string, originalName: string, size?: number): string {
   const dir = getEstimateCacheDir();
   const ext = path.extname(originalName).toLowerCase().replace(/[^a-z0-9.]/g, '') || '.bin';
-  const primaryHash = createHash('sha256').update(fileKey).digest('hex').slice(0, 24);
+  const scopedIdentity = `${userId}:${fileKey}`;
+  const primaryHash = createHash('sha256').update(scopedIdentity).digest('hex').slice(0, 24);
   const primaryPath = path.join(dir, `${primaryHash}${ext}`);
   // eslint-disable-next-line security/detect-non-literal-fs-filename
   if (fs.existsSync(primaryPath)) return primaryPath;
 
   if (typeof size === 'number' && size > 0) {
-    const fallbackKey = `${originalName}_${size}`;
+    const fallbackKey = `${userId}:${originalName}_${size}`;
     const fallbackHash = createHash('sha256').update(fallbackKey).digest('hex').slice(0, 24);
     const fallbackPath = path.join(dir, `${fallbackHash}${ext}`);
     // eslint-disable-next-line security/detect-non-literal-fs-filename
@@ -103,7 +104,7 @@ export async function POST(req: NextRequest) {
         const f = rawFiles[i];
         // eslint-disable-next-line security/detect-object-injection
         const key = keys[i] || `${f.name}_${f.size}_${f.lastModified || 0}`;
-        const cachedPath = getCacheFilePath(key, f.name, f.size);
+        const cachedPath = getCacheFilePath(session.userId, key, f.name, f.size);
         // eslint-disable-next-line security/detect-non-literal-fs-filename
         if (!fs.existsSync(cachedPath)) {
           const buf = Buffer.from(await f.arrayBuffer());
@@ -137,7 +138,7 @@ export async function POST(req: NextRequest) {
       const missingKeys: string[] = [];
 
       for (const ref of fileRefs) {
-        const cachedPath = getCacheFilePath(ref.key, ref.name, ref.size);
+        const cachedPath = getCacheFilePath(session.userId, ref.key, ref.name, ref.size);
         // eslint-disable-next-line security/detect-non-literal-fs-filename
         if (!fs.existsSync(cachedPath)) {
           missingKeys.push(ref.key);

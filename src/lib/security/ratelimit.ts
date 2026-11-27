@@ -123,6 +123,7 @@ export function classifyRouteGroup(pathname: string): string {
   if (
     pathname.startsWith('/api/youtube') ||
     pathname.startsWith('/api/convert') ||
+    pathname.startsWith('/api/compress') ||
     pathname.startsWith('/api/hevc') ||
     pathname.startsWith('/api/spotify-convert')
   ) return 'heavy';

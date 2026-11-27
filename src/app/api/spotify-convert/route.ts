@@ -6,7 +6,7 @@ import { randomUUID } from 'crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { verifyAuth, registerJobOwner, verifyJobOwnership } from '../../../lib/security/auth';
-import { sanitizeError, sanitizeSseError } from '../../../lib/security/errors';
+import { sanitizeError, sanitizeSseError, resolveSafeSseMessage } from '../../../lib/security/errors';
 import { createZipArchive } from '../../../lib/utils/archive';
 
 export const dynamic = 'force-dynamic';
@@ -19,13 +19,14 @@ interface JobData {
   createdAt: number;
 }
 
-const activeJobs = new Map<string, JobData>();
+const activeJobs: Map<string, JobData> =
+  (globalThis as any).__spotifyActiveJobs || ((globalThis as any).__spotifyActiveJobs = new Map<string, JobData>());
 
 function cleanExpiredJobs() {
   const now = Date.now();
-  const TEN_MINUTES_MS = 10 * 60 * 1000;
+  const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
   activeJobs.forEach((job, jobId) => {
-    if (now - job.createdAt > TEN_MINUTES_MS) {
+    if (now - job.createdAt > TWO_HOURS_MS) {
       activeJobs.delete(jobId);
     }
   });
@@ -305,6 +306,8 @@ function createSpotifySSEStream(
     }
   }
 
+  ((globalThis as any)[Symbol.for('celestial.activeJobDirs')] ??= new Set<string>()).add(masterJobId);
+
   return new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder();
@@ -336,9 +339,12 @@ function createSpotifySSEStream(
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ trackId, status: 'processing' })}\n\n`));
 
           try {
+            const outputTemplate = tracks.length > 1
+              ? `${String(i + 1).padStart(2, '0')} - %(title).120s [%(id)s].%(ext)s`
+              : '%(title)s.%(ext)s';
             const args = [
               '-P', masterDir,
-              '-o', '%(title)s.%(ext)s',
+              '-o', outputTemplate,
               '-x', '--audio-format', outputFormat, '--audio-quality', `${quality}K`,
             ];
 
@@ -385,7 +391,8 @@ function createSpotifySSEStream(
           } catch (trackErr: unknown) {
             if (isCancelled || signal?.aborted || cleanedUp) break;
             console.error(`Error processing Spotify track ${trackId}:`, trackErr);
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ trackId, status: 'error', error: String(trackErr) })}\n\n`));
+            const safeTrackError = resolveSafeSseMessage(trackErr) ?? 'Track download failed. Try retrying or running locally.';
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ trackId, status: 'error', error: safeTrackError })}\n\n`));
           }
         }
 
@@ -433,6 +440,14 @@ function createSpotifySSEStream(
         }
       } finally {
         stopHeartbeat();
+        (globalThis as any)[Symbol.for('celestial.activeJobDirs')]?.delete?.(masterJobId);
+        if (!cleanedUp) {
+          try {
+            const now = new Date();
+            // eslint-disable-next-line security/detect-non-literal-fs-filename
+            fs.utimesSync(masterDir, now, now);
+          } catch {}
+        }
         if (signal) {
           signal.removeEventListener('abort', onAbort);
         }
@@ -493,17 +508,28 @@ export async function POST(req: NextRequest) {
 
     // 2. Conversion initialization (returns jobId)
     if (body.trackIds || body.tracks) {
+      const MAX_SPOTIFY_TRACKS = 300;
+      const rawTrackList = Array.isArray(body.tracks)
+        ? body.tracks
+        : (Array.isArray(body.trackIds) ? body.trackIds : []);
+      if (rawTrackList.length === 0 || rawTrackList.length > MAX_SPOTIFY_TRACKS) {
+        return NextResponse.json(
+          { error: `Track selection must contain between 1 and ${MAX_SPOTIFY_TRACKS} tracks` },
+          { status: 400 }
+        );
+      }
+
       const jobId = randomUUID();
       registerJobOwner(jobId, session.userId);
       let tracks: { id: string; name: string }[] = [];
       if (Array.isArray(body.tracks)) {
-        tracks = body.tracks.map((t: any, idx: number) => ({
-          id: t.id || `t-${idx + 1}`,
-          name: t.name || t.title || `Track ${idx + 1}`,
+        tracks = body.tracks.slice(0, MAX_SPOTIFY_TRACKS).map((t: any, idx: number) => ({
+          id: String(t?.id || `t-${idx + 1}`).slice(0, 80),
+          name: String(t?.name || t?.title || `Track ${idx + 1}`).replace(/[\x00-\x1F\x7F]/g, '').trim().slice(0, 200) || `Track ${idx + 1}`,
         }));
       } else if (Array.isArray(body.trackIds)) {
-        tracks = body.trackIds.map((id: string, idx: number) => ({
-          id,
+        tracks = body.trackIds.slice(0, MAX_SPOTIFY_TRACKS).map((id: string, idx: number) => ({
+          id: String(id || `t-${idx + 1}`).slice(0, 80),
           name: `Track ${idx + 1}`,
         }));
       }
@@ -585,16 +611,20 @@ export async function GET(req: NextRequest) {
   }
 
   const job = activeJobs.get(jobId);
+  if (!job) {
+    return NextResponse.json(
+      { error: 'Spotify conversion job expired or not found' },
+      { status: 404 }
+    );
+  }
   const masterJobId = jobId;
   const masterDir = createJobDir(masterJobId);
 
-  const tracks = job?.tracks ?? [{ id: 't1', name: 'Track 1' }];
-  const outputFormat = job?.outputFormat ?? 'mp3';
-  const quality = job?.quality ?? '320';
+  const tracks = job.tracks;
+  const outputFormat = job.outputFormat;
+  const quality = job.quality;
 
-  if (job) {
-    activeJobs.delete(jobId);
-  }
+  activeJobs.delete(jobId);
 
   const stream = createSpotifySSEStream(masterJobId, masterDir, tracks, outputFormat, quality, req.signal);
 

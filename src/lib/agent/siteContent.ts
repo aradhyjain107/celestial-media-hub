@@ -127,7 +127,6 @@ export const STATIC_OR_MACHINE_PATHS = new Set<string>([
   '/og-image.png',
   '/favicon.svg',
   '/upi-qr.png',
-  '/status.html',
   '/bootstrap-guard.js',
   '/hardware-probe-worker.js',
 ]);

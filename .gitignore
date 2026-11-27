@@ -44,6 +44,7 @@ logs/
 *.log
 .tmp/
 /tmp/
+public/status.html
 test-results/
 playwright-report/
 tests/*.png

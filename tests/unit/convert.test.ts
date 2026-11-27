@@ -268,5 +268,71 @@ describe('/api/convert POST', () => {
       expect(calledArgs).not.toContain('aac');
     }
   });
+
+  test('passes gifFps and gifPalette controls into FFmpeg GIF filter graph', async () => {
+    // 1. gifFps=24, gifPalette=false -> fps=24 without palettegen
+    const formDataNoPalette = new FormData();
+    formDataNoPalette.append('outputFormat', 'gif');
+    formDataNoPalette.append('gifFps', '24');
+    formDataNoPalette.append('gifPalette', 'false');
+    formDataNoPalette.append('file', new File(['mock'], 'clip.mp4', { type: 'video/mp4' }));
+
+    vi.mocked(tempExt.writeInputFile).mockResolvedValue('/mock/convertPath/clip.mp4');
+    vi.mocked(ffmpegExt.executeFfmpeg).mockReturnValue(new ReadableStream({
+      start(c) {
+        c.enqueue(new TextEncoder().encode('data: {"progress":100}\n\n'));
+        c.close();
+      }
+    }));
+
+    const res1 = await POST({
+      formData: async () => formDataNoPalette,
+      headers: new Headers({ authorization: 'Bearer user_test' }),
+    } as any as NextRequest);
+    const reader1 = res1.body?.getReader();
+    while (reader1) {
+      const { done } = await reader1.read();
+      if (done) break;
+    }
+
+    const noPaletteArgs = vi.mocked(ffmpegExt.executeFfmpeg).mock.calls[0][1] as string[];
+    const vfIdx1 = noPaletteArgs.indexOf('-vf');
+    expect(vfIdx1).toBeGreaterThan(-1);
+    expect(noPaletteArgs[vfIdx1 + 1]).toContain('fps=24');
+    expect(noPaletteArgs[vfIdx1 + 1]).not.toContain('palettegen');
+
+    // 2. gifFps=12, gifPalette=true -> fps=12 with palettegen + paletteuse
+    vi.clearAllMocks();
+    const formDataWithPalette = new FormData();
+    formDataWithPalette.append('outputFormat', 'gif');
+    formDataWithPalette.append('gifFps', '12');
+    formDataWithPalette.append('gifPalette', 'true');
+    formDataWithPalette.append('file', new File(['mock'], 'clip.mp4', { type: 'video/mp4' }));
+
+    vi.mocked(tempExt.writeInputFile).mockResolvedValue('/mock/convertPath/clip.mp4');
+    vi.mocked(ffmpegExt.executeFfmpeg).mockReturnValue(new ReadableStream({
+      start(c) {
+        c.enqueue(new TextEncoder().encode('data: {"progress":100}\n\n'));
+        c.close();
+      }
+    }));
+
+    const res2 = await POST({
+      formData: async () => formDataWithPalette,
+      headers: new Headers({ authorization: 'Bearer user_test' }),
+    } as any as NextRequest);
+    const reader2 = res2.body?.getReader();
+    while (reader2) {
+      const { done } = await reader2.read();
+      if (done) break;
+    }
+
+    const withPaletteArgs = vi.mocked(ffmpegExt.executeFfmpeg).mock.calls[0][1] as string[];
+    const vfIdx2 = withPaletteArgs.indexOf('-vf');
+    expect(vfIdx2).toBeGreaterThan(-1);
+    expect(withPaletteArgs[vfIdx2 + 1]).toContain('fps=12');
+    expect(withPaletteArgs[vfIdx2 + 1]).toContain('palettegen');
+    expect(withPaletteArgs[vfIdx2 + 1]).toContain('paletteuse');
+  });
 });
 

@@ -37,6 +37,20 @@ async function buildConvertArgs(inputPath: string, opts: any, preset: string): P
       ? ['-c:v', 'h264_videotoolbox', '-b:v']
       : ['-c:v', 'libx264', '-preset', 'ultrafast', '-profile:v', 'high', '-level', '4.2', '-pix_fmt', 'yuv420p'];
 
+    const applyPresetModifiers = (targetArgs: string[]) => {
+      if (opts.stripAudio && !targetArgs.includes('-an')) {
+        const caIdx = targetArgs.indexOf('-c:a');
+        if (caIdx !== -1) targetArgs.splice(caIdx, 2);
+        const baIdx = targetArgs.indexOf('-b:a');
+        if (baIdx !== -1) targetArgs.splice(baIdx, 2);
+        targetArgs.push('-an');
+      }
+      if (opts.stripMetadata && !targetArgs.includes('-map_metadata')) {
+        targetArgs.push('-map_metadata', '-1');
+      }
+      return targetArgs;
+    };
+
     if (preset === 'twitter') {
       if (isVTB) {
         args.push('-c:v', 'h264_videotoolbox', '-b:v', '4M', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', 'faststart');
@@ -44,7 +58,7 @@ async function buildConvertArgs(inputPath: string, opts: any, preset: string): P
         args.push('-c:v', 'libx264', '-preset', 'ultrafast', '-profile:v', 'high', '-level', '4.2',
                   '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', 'faststart');
       }
-      return { args, strategy: 'ENCODE', reason: 'Twitter preset — H.264/AAC hardware accelerated' };
+      return { args: applyPresetModifiers(args), strategy: 'ENCODE', reason: 'Twitter preset — H.264/AAC hardware accelerated' };
     } else if (preset === 'instagram' || preset === 'tiktok') {
       if (isVTB) {
         args.push('-c:v', 'h264_videotoolbox', '-b:v', '4M', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart',
@@ -54,7 +68,7 @@ async function buildConvertArgs(inputPath: string, opts: any, preset: string): P
                   '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart',
                   '-vf', 'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2');
       }
-      return { args, strategy: 'ENCODE', reason: `${preset} preset — vertical crop` };
+      return { args: applyPresetModifiers(args), strategy: 'ENCODE', reason: `${preset} preset — vertical crop` };
     } else if (preset === 'whatsapp') {
       if (isVTB) {
         args.push('-c:v', 'h264_videotoolbox', '-b:v', '1.2M', '-pix_fmt', 'yuv420p', '-vf', 'scale=-2:480',
@@ -63,7 +77,7 @@ async function buildConvertArgs(inputPath: string, opts: any, preset: string): P
         args.push('-c:v', 'libx264', '-crf', '28', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-vf', 'scale=-2:480',
                   '-c:a', 'aac', '-b:a', '96k', '-movflags', '+faststart');
       }
-      return { args, strategy: 'ENCODE', reason: 'WhatsApp preset — compressed 480p' };
+      return { args: applyPresetModifiers(args), strategy: 'ENCODE', reason: 'WhatsApp preset — compressed 480p' };
     } else if (preset === 'discord') {
       if (isVTB) {
         args.push('-c:v', 'h264_videotoolbox', '-b:v', '2M', '-pix_fmt', 'yuv420p', '-vf', 'scale=-2:720',
@@ -72,7 +86,7 @@ async function buildConvertArgs(inputPath: string, opts: any, preset: string): P
         args.push('-c:v', 'libx264', '-crf', '26', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-vf', 'scale=-2:720',
                   '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart');
       }
-      return { args, strategy: 'ENCODE', reason: 'Discord preset — 720p' };
+      return { args: applyPresetModifiers(args), strategy: 'ENCODE', reason: 'Discord preset — 720p' };
     } else if (preset === 'email') {
       if (isVTB) {
         args.push('-c:v', 'h264_videotoolbox', '-b:v', '800k', '-pix_fmt', 'yuv420p', '-vf', 'scale=-2:360',
@@ -81,7 +95,7 @@ async function buildConvertArgs(inputPath: string, opts: any, preset: string): P
         args.push('-c:v', 'libx264', '-crf', '32', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-vf', 'scale=-2:360',
                   '-c:a', 'aac', '-b:a', '64k', '-movflags', '+faststart');
       }
-      return { args, strategy: 'ENCODE', reason: 'Email preset — low bitrate 360p' };
+      return { args: applyPresetModifiers(args), strategy: 'ENCODE', reason: 'Email preset — low bitrate 360p' };
     } else if (preset === 'high') {
       if (isVTB) {
         args.push('-c:v', 'h264_videotoolbox', '-b:v', '8M', '-pix_fmt', 'yuv420p',
@@ -90,7 +104,7 @@ async function buildConvertArgs(inputPath: string, opts: any, preset: string): P
         args.push('-c:v', 'libx264', '-crf', '18', '-preset', 'fast', '-pix_fmt', 'yuv420p',
                   '-c:a', 'aac', '-b:a', '256k', '-movflags', '+faststart');
       }
-      return { args, strategy: 'ENCODE', reason: 'High quality preset — hardware accelerated' };
+      return { args: applyPresetModifiers(args), strategy: 'ENCODE', reason: 'High quality preset — hardware accelerated' };
     } else if (preset === 'remux') {
       const streamInfo = await probeMediaStreams(inputPath);
       const isQuickTimeContainer = opts.outputFormat === 'mp4' || opts.outputFormat === 'mov' || opts.outputFormat === 'm4a';
@@ -486,6 +500,8 @@ export async function POST(req: NextRequest) {
       const resolution = req.headers.get('x-resolution') || 'original';
       const stripAudio = req.headers.get('x-strip-audio') === 'true';
       const stripMetadata = req.headers.get('x-strip-metadata') === 'true';
+      const gifFps = req.headers.has('x-gif-fps') ? parseInt(req.headers.get('x-gif-fps')!, 10) : 15;
+      const gifPalette = req.headers.has('x-gif-palette') ? req.headers.get('x-gif-palette') !== 'false' : true;
 
       const validation = ConvertInputSchema.safeParse({
         preset,
@@ -494,18 +510,22 @@ export async function POST(req: NextRequest) {
         resolution,
         stripAudio,
         stripMetadata,
+        gifFps,
+        gifPalette,
         file: { filename, size: 1024, mimetype: 'video/mp4' }
       });
       if (!validation.success) return NextResponse.json({ error: validation.error.format() }, { status: 400 });
 
       const isGif = outputFormat === 'gif';
       const isImage = IMAGE_FORMATS.includes(outputFormat);
-      const opts = { outputFormat, speed, resolution, stripAudio, stripMetadata, isGif, isImage };
+      const opts = { outputFormat, speed, resolution, stripAudio, stripMetadata, isGif, isImage, gifFps: validation.data.gifFps, gifPalette: validation.data.gifPalette };
       const masterDir = createJobDir(jobId);
 
       if (!req.body) {
+        cleanupJobDir(jobId);
         return NextResponse.json({ error: 'No file stream provided' }, { status: 400 });
       }
+      ((globalThis as any)[Symbol.for('celestial.activeJobDirs')] ??= new Set<string>()).add(jobId);
 
       let activeReader: ReadableStreamDefaultReader | null = null;
       let activeStream: ReadableStream | null = null;
@@ -610,6 +630,14 @@ export async function POST(req: NextRequest) {
               cleanedUp = true;
             }
           } finally {
+            (globalThis as any)[Symbol.for('celestial.activeJobDirs')]?.delete?.(jobId);
+            if (!cleanedUp) {
+              try {
+                const now = new Date();
+                // eslint-disable-next-line security/detect-non-literal-fs-filename
+                fs.utimesSync(masterDir, now, now);
+              } catch {}
+            }
             if (req.signal) {
               req.signal.removeEventListener('abort', onAbort);
             }
@@ -642,6 +670,8 @@ export async function POST(req: NextRequest) {
     const resolution    = formData.get('resolution')    as string || 'original';
     const stripAudio    = formData.get('stripAudio')    === 'true';
     const stripMetadata = formData.get('stripMetadata') === 'true';
+    const gifFps        = formData.has('gifFps')        ? parseInt(formData.get('gifFps') as string, 10) : undefined;
+    const gifPalette    = formData.has('gifPalette')    ? formData.get('gifPalette') !== 'false'         : undefined;
     const rawFiles      = formData.getAll('files')      as File[];
     const singleFile    = formData.get('file')           as File | null;
     const singleVideoFile = (formData.get('videoFile') || formData.get('attachedVideo')) as File | null;
@@ -677,15 +707,28 @@ export async function POST(req: NextRequest) {
     if (visualizerColor !== undefined) payload.visualizerColor = visualizerColor;
     if (visualizerBg !== undefined) payload.visualizerBg = visualizerBg;
     if (videoLoop !== undefined) payload.videoLoop = videoLoop;
+    if (gifFps !== undefined) payload.gifFps = gifFps;
+    if (gifPalette !== undefined) payload.gifPalette = gifPalette;
 
     const validation = ConvertInputSchema.safeParse(payload);
     if (!validation.success) return NextResponse.json({ error: validation.error.format() }, { status: 400 });
     const validated = validation.data;
 
     const masterDir = createJobDir(jobId);
+    ((globalThis as any)[Symbol.for('celestial.activeJobDirs')] ??= new Set<string>()).add(jobId);
     const isGif   = outputFormat === 'gif';
     const isImage = IMAGE_FORMATS.includes(outputFormat);
-    const opts    = { outputFormat, speed, resolution, stripAudio, stripMetadata, isGif, isImage };
+    const opts    = {
+      outputFormat,
+      speed,
+      resolution,
+      stripAudio,
+      stripMetadata,
+      isGif,
+      isImage,
+      gifFps: validated.gifFps,
+      gifPalette: validated.gifPalette,
+    };
 
     const isMultiFile = filesToProcess.length > 1;
 
@@ -944,11 +987,18 @@ export async function POST(req: NextRequest) {
               `data: {"strategy":"ENCODE","strategyReason":${JSON.stringify(`Batch convert ${filesToProcess.length} files to ${outputFormat.toUpperCase()}`)}}\n\n`
             ));
 
+            const seenInputNames = new Set<string>();
             for (let i = 0; i < filesToProcess.length; i++) {
               if (req.signal?.aborted || cleanedUp) break;
               // eslint-disable-next-line security/detect-object-injection
               const f = filesToProcess[i];
-              const inputPath = await writeInputFile(jobId, f.name, f);
+              let safeInputName = f.name;
+              if (seenInputNames.has(safeInputName)) {
+                const parsedIn = path.parse(safeInputName);
+                safeInputName = `${parsedIn.name}_${i + 1}${parsedIn.ext}`;
+              }
+              seenInputNames.add(safeInputName);
+              const inputPath = await writeInputFile(jobId, safeInputName, f);
               if (req.signal?.aborted || cleanedUp) break;
               const parsed = path.parse(f.name);
               const outputFileName = `converted_${i + 1}_${parsed.name}.${outputFormat}`;
@@ -1046,6 +1096,14 @@ export async function POST(req: NextRequest) {
             cleanedUp = true;
           }
         } finally {
+          (globalThis as any)[Symbol.for('celestial.activeJobDirs')]?.delete?.(jobId);
+          if (!cleanedUp) {
+            try {
+              const now = new Date();
+              // eslint-disable-next-line security/detect-non-literal-fs-filename
+              fs.utimesSync(masterDir, now, now);
+            } catch {}
+          }
           if (req.signal) {
             req.signal.removeEventListener('abort', onAbort);
           }

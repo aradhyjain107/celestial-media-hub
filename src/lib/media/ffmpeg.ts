@@ -124,7 +124,8 @@ export function buildAudioVideoSynthesisArgs(opts: AudioVideoSynthesisOptions): 
     targetDuration = targetDuration / speed;
   }
 
-  const args: string[] = ['-threads', '0'];
+  const synthesisThreads = getOptimalFfmpegThreads() === '1' && os.platform() === 'linux' ? '1' : '0';
+  const args: string[] = ['-threads', synthesisThreads];
 
   // Input 0: Primary Audio
   if ((audioSyncMode === 'fit-video' || audioSyncMode === 'trim-audio') && audioDuration > 0 && audioDuration < clipDuration) {
@@ -298,8 +299,9 @@ export function buildVisualizerSynthesisArgs(opts: VisualizerSynthesisOptions): 
     filterComplex = `[0:a]showwaves=s=${width}x${height}:mode=line:colors=${fgColor}@0.9:scale=cbrt:rate=30,format=yuv420p${videoSpeedFilter}[waves];color=c=${bgColor}:s=${width}x${height}:r=30:d=${targetDuration}[bg];[bg][waves]overlay=(W-w)/2:(H-h)/2:shortest=1[v]`;
   }
 
+  const synthesisThreads = getOptimalFfmpegThreads() === '1' && os.platform() === 'linux' ? '1' : '0';
   const args: string[] = [
-    '-threads', '0',
+    '-threads', synthesisThreads,
     '-i', audioPath,
   ];
 

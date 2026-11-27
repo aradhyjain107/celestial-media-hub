@@ -13,29 +13,35 @@ import {
 export const config = {
   matcher: [
     '/api/:path*',
-    '/((?!_next/static|_next/image|favicon\\.svg|upi-qr\\.png|og-image\\.png|bootstrap-guard\\.js|hardware-probe-worker\\.js|status\\.html).*)',
+    '/((?!_next/static|_next/image|favicon\\.svg|upi-qr\\.png|og-image\\.png|bootstrap-guard\\.js|hardware-probe-worker\\.js).*)',
   ],
 };
 
 // Public endpoints that bypass global auth (e.g. health check endpoints)
 const PUBLIC_API_ROUTES = new Set<string>([
   '/api/health',
-  '/api/status',
   '/api/system/hardware',
 ]);
 
 /**
  * Extracts the best available client identifier for rate limiting.
- * Prefers the real IP from trusted proxy headers, falls back to socket IP.
+ * Prefers Cloudflare's verified header, then the rightmost proxy-appended hop
+ * of X-Forwarded-For (preventing client spoofing of leftmost XFF entries),
+ * falling back to X-Real-IP and local loopback.
  */
 function getClientIp(req: NextRequest): string {
-  // Vercel / Cloudflare / AWS headers (set by trusted infrastructure)
-  const ip =
-    req.headers.get('x-real-ip') ||
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    req.headers.get('cf-connecting-ip') ||
-    '127.0.0.1';  // fallback for local dev
-  return ip;
+  const cfIp = req.headers.get('cf-connecting-ip')?.trim();
+  if (cfIp) return cfIp;
+
+  const xff = req.headers.get('x-forwarded-for');
+  if (xff) {
+    const hops = xff.split(',').map(part => part.trim()).filter(Boolean);
+    if (hops.length > 0) {
+      return hops[hops.length - 1];
+    }
+  }
+
+  return req.headers.get('x-real-ip')?.trim() || '127.0.0.1';
 }
 
 function handleAgentContentNegotiation(req: NextRequest): NextResponse {
@@ -96,14 +102,26 @@ function isValidHostHeader(raw: string): boolean {
   return true;
 }
 
+function isBindOrLoopbackHost(hostname: string): boolean {
+  const h = hostname.toLowerCase();
+  return h === '0.0.0.0' || h === '::' || h === '[::]' || h === '127.0.0.1' || h === 'localhost';
+}
+
 function resolveRequestOrigin(req: NextRequest): string {
-  const forwardedHost = req.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
-  if (forwardedHost && isValidHostHeader(forwardedHost)) {
-    const rawProto = req.headers.get('x-forwarded-proto')?.split(',')[0]?.trim().toLowerCase();
-    const proto = rawProto === 'http' || rawProto === 'https'
-      ? rawProto
-      : req.nextUrl.protocol.replace(':', '') || 'https';
-    return `${proto}://${forwardedHost}`;
+  const trustProxyHeaders =
+    process.env.TRUST_PROXY === 'true' ||
+    process.env.RENDER === 'true' ||
+    isBindOrLoopbackHost(req.nextUrl.hostname);
+
+  if (trustProxyHeaders) {
+    const forwardedHost = req.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
+    if (forwardedHost && isValidHostHeader(forwardedHost)) {
+      const rawProto = req.headers.get('x-forwarded-proto')?.split(',')[0]?.trim().toLowerCase();
+      const proto = rawProto === 'http' || rawProto === 'https'
+        ? rawProto
+        : req.nextUrl.protocol.replace(':', '') || 'https';
+      return `${proto}://${forwardedHost}`;
+    }
   }
   return req.nextUrl.origin;
 }
@@ -117,7 +135,12 @@ export function middleware(req: NextRequest) {
 
   // ── CORS & Preflight (OPTIONS) ─────────────────────────────────────────
   const origin = req.headers.get('origin');
-  const allowedOrigin = process.env.ALLOWED_ORIGIN || resolveRequestOrigin(req);
+  const configuredOrigin = (
+    process.env.ALLOWED_ORIGIN?.trim() ||
+    process.env.RENDER_EXTERNAL_URL?.trim() ||
+    ''
+  ).replace(/\/+$/, '');
+  const allowedOrigin = configuredOrigin || resolveRequestOrigin(req);
 
   if (req.method === 'OPTIONS') {
     // If request has an Origin header that doesn't match allowed origin, reject CORS preflight (403)
@@ -142,10 +165,16 @@ export function middleware(req: NextRequest) {
   const fetchSite = req.headers.get('sec-fetch-site');
   const fetchMode = req.headers.get('sec-fetch-mode');
   const fetchDest = req.headers.get('sec-fetch-dest');
+  const isSafeCrossSiteNavigation =
+    fetchMode === 'navigate' &&
+    req.method === 'GET' &&
+    !pathname.startsWith('/api/experimental/') &&
+    !['object', 'embed'].includes(fetchDest || '');
+
   if (
     fetchSite === 'cross-site' &&
     !(origin && origin === allowedOrigin) &&
-    !(fetchMode === 'navigate' && req.method === 'GET' && !['object', 'embed'].includes(fetchDest || ''))
+    !isSafeCrossSiteNavigation
   ) {
     const forbidden = NextResponse.json(
       { error: 'Forbidden cross-site API request' },
@@ -155,9 +184,17 @@ export function middleware(req: NextRequest) {
     return forbidden;
   }
 
+  const clientIp = getClientIp(req);
 
-  // Allow public API routes
+  // Rate-limited public API routes (health & hardware telemetry)
   if (PUBLIC_API_ROUTES.has(pathname)) {
+    const pubLimit = checkRateLimit(`${clientIp}:public`, { limit: 120, windowMs: 60_000 });
+    if (!pubLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Too Many Requests' },
+        { status: 429, headers: { 'Retry-After': String(pubLimit.retryAfter ?? 60) } }
+      );
+    }
     const publicRes = NextResponse.next();
     publicRes.headers.set('Vary', 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site');
     return publicRes;
@@ -167,14 +204,13 @@ export function middleware(req: NextRequest) {
   // ── Rate Limiting (R7) ──────────────────────────────────────────────────
   // Applied BEFORE auth to protect against credential-stuffing / DoS.
   // Key: ip:routeGroup — isolates limits per-client and per-endpoint-class.
-  const clientIp = getClientIp(req);
   const routeGroup = classifyRouteGroup(pathname);
 
-  // Isolate internal loopback monitoring daemon requests into their own high-capacity bucket
-  // so health probes do not exhaust real user rate limit quotas on localhost.
+  // Isolate authenticated internal monitoring daemon requests only when a server secret is configured
+  const monitoringSecret = process.env.MONITORING_SECRET?.trim();
   const isInternalMonitoring =
-    (clientIp === '127.0.0.1' || clientIp === '::1') &&
-    req.headers.get('x-monitoring-agent') === 'true';
+    Boolean(monitoringSecret) &&
+    req.headers.get('x-monitoring-secret') === monitoringSecret;
 
   const rateLimitKey = isInternalMonitoring
     ? `internal-monitoring:${routeGroup}`

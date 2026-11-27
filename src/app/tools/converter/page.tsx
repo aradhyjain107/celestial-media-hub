@@ -389,6 +389,7 @@ export default function UniversalConverter() {
             'x-resolution': resolution,
             'x-strip-audio': String(stripAudio),
             'x-strip-metadata': String(stripMetadata),
+            ...(isGif ? { 'x-gif-fps': String(gifFps), 'x-gif-palette': String(gifPalette) } : {}),
           },
           body: files[0],
         });

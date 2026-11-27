@@ -134,6 +134,30 @@ export class CelestialStreamer {
    * Placeholder for the Turbo-Parallel Downloader.
    * This will eventually use lib/engine/downloader.ts
    */
+  private isSafeStreamUrl(rawUrl: string): boolean {
+    try {
+      const parsed = new URL(rawUrl);
+      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
+      const host = parsed.hostname.toLowerCase();
+      if (
+        host === 'localhost' ||
+        host === '127.0.0.1' ||
+        host === '::1' ||
+        host === '[::1]' ||
+        host === '0.0.0.0' ||
+        host === '169.254.169.254' ||
+        host.startsWith('10.') ||
+        host.startsWith('192.168.') ||
+        /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
+      ) {
+        return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   private async initiateSourceDownload(
     source: StreamSource, 
     targetPipe: any,
@@ -141,6 +165,9 @@ export class CelestialStreamer {
     isCancelled?: () => boolean
   ) {
     try {
+      if (!this.isSafeStreamUrl(source.url)) {
+        throw new Error(`Blocked unsafe upstream stream URL for ${source.type}`);
+      }
       console.log(`[TURBO] Connecting to ${source.type} stream...`);
       const response = await fetch(source.url, {
         headers: {

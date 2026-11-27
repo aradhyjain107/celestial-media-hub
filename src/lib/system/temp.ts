@@ -201,9 +201,15 @@ export async function writeInputFile(
   }
 
   const CHUNK_LIMIT = 16 * 1024 * 1024; // 16 MB chunk write safety barrier
+  const MAX_UPLOAD_BYTES = process.env.RENDER === 'true'
+    ? 250 * 1024 * 1024 // 250 MB guard on 512 MB Render container
+    : 5 * 1024 * 1024 * 1024; // 5 GB max matching FileUploadSchema
 
   // Helper to write buffer/typed-array in safe <= 16MB slices to prevent Node.js 2GB ERR_OUT_OF_RANGE
   const safeWriteBuffer = async (targetPath: string, buffer: Buffer | Uint8Array) => {
+    if (buffer.byteLength > MAX_UPLOAD_BYTES) {
+      throw new Error(`Upload exceeds maximum allowed size (${Math.round(MAX_UPLOAD_BYTES / (1024 * 1024))} MB)`);
+    }
     const handle = await fs.promises.open(targetPath, 'w');
     try {
       if (buffer.byteLength <= CHUNK_LIMIT) {
@@ -227,11 +233,16 @@ export async function writeInputFile(
       if (webStream && typeof webStream.getReader === 'function') {
         const reader = webStream.getReader();
         const handle = await fs.promises.open(filePath, 'w');
+        let totalWritten = 0;
         try {
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
             if (value && value.byteLength > 0) {
+              totalWritten += value.byteLength;
+              if (totalWritten > MAX_UPLOAD_BYTES) {
+                throw new Error(`Upload exceeds maximum allowed size (${Math.round(MAX_UPLOAD_BYTES / (1024 * 1024))} MB)`);
+              }
               if (value.byteLength <= CHUNK_LIMIT) {
                 await handle.write(value, 0, value.byteLength);
               } else {
@@ -243,12 +254,22 @@ export async function writeInputFile(
               }
             }
           }
+        } catch (streamErr: any) {
+          if (String(streamErr?.message || '').includes('Upload exceeds maximum allowed size')) {
+            await handle.close().catch(() => {});
+            try { await fs.promises.unlink(filePath); } catch {}
+            throw streamErr;
+          }
+          throw streamErr;
         } finally {
-          await handle.close();
+          await handle.close().catch(() => {});
         }
         return filePath;
       }
-    } catch {
+    } catch (err: any) {
+      if (String(err?.message || '').includes('Upload exceeds maximum allowed size')) {
+        throw err;
+      }
       // Fallback to arrayBuffer if streaming pipeline fails in polyfill/test environments
     }
   }
@@ -257,11 +278,16 @@ export async function writeInputFile(
   if (source && typeof (source as any).getReader === 'function') {
     const reader = (source as any).getReader();
     const handle = await fs.promises.open(filePath, 'w');
+    let totalWritten = 0;
     try {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         if (value && value.byteLength > 0) {
+          totalWritten += value.byteLength;
+          if (totalWritten > MAX_UPLOAD_BYTES) {
+            throw new Error(`Upload exceeds maximum allowed size (${Math.round(MAX_UPLOAD_BYTES / (1024 * 1024))} MB)`);
+          }
           if (value.byteLength <= CHUNK_LIMIT) {
             await handle.write(value, 0, value.byteLength);
           } else {
@@ -273,8 +299,12 @@ export async function writeInputFile(
           }
         }
       }
+    } catch (err) {
+      await handle.close().catch(() => {});
+      try { await fs.promises.unlink(filePath); } catch {}
+      throw err;
     } finally {
-      await handle.close();
+      await handle.close().catch(() => {});
     }
     return filePath;
   }
@@ -289,9 +319,14 @@ export async function writeInputFile(
   // 4. Node.js Readable stream
   if (source && typeof (source as any).pipe === 'function') {
     const handle = await fs.promises.open(filePath, 'w');
+    let totalWritten = 0;
     try {
       for await (const chunk of (source as any)) {
         if (chunk && chunk.byteLength > 0) {
+          totalWritten += chunk.byteLength;
+          if (totalWritten > MAX_UPLOAD_BYTES) {
+            throw new Error(`Upload exceeds maximum allowed size (${Math.round(MAX_UPLOAD_BYTES / (1024 * 1024))} MB)`);
+          }
           if (chunk.byteLength <= CHUNK_LIMIT) {
             await handle.write(chunk, 0, chunk.byteLength);
           } else {
@@ -303,8 +338,12 @@ export async function writeInputFile(
           }
         }
       }
+    } catch (err) {
+      await handle.close().catch(() => {});
+      try { await fs.promises.unlink(filePath); } catch {}
+      throw err;
     } finally {
-      await handle.close();
+      await handle.close().catch(() => {});
     }
     return filePath;
   }
